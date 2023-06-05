@@ -1,0 +1,16 @@
+# pytorch
+# nvcc
+flash_attn
+einops
+transformers
+sentencepiece
+prompt_toolkit
+rich
+psutil
+accelerate
+cpm_kernels
+fastapi
+uvicorn
+httpx
+shortuuid
+tiktoken
