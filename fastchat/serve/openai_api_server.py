@@ -115,7 +115,9 @@ def create_error_response(code: int, message: str) -> JSONResponse:
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
+    message = {'Excption': str(exc), 'Request': request}
+    # return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
+    return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, json.dumps(message))
 
 
 async def check_model(request) -> Optional[JSONResponse]:
