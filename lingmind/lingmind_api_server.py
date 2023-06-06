@@ -17,6 +17,7 @@ import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastchat.constants import WORKER_API_TIMEOUT, WORKER_API_EMBEDDING_BATCH_SIZE, ErrorCode
+from fastchat.serve.openai_api_server import create_chat_completion
 from pydantic import BaseSettings, BaseModel
 import uvicorn
 from fastapi.exceptions import RequestValidationError
@@ -88,12 +89,22 @@ class RewriteRequest(BaseModel):
 
 
 @app.post("/v1/chat/policy_completions")
-def chat_policy_completions(request: ChatCompletionRequest):
+async def chat_policy_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含两个步骤：
         - 通过LLM API 的 /chat/completion 接口生成答案
         - 通过LLM API 的 /completion 接口对答案进行重写
     """
     print(request)
+    request_stream = request.stream
+    request_n = request.n
+    request.stream = False
+    request.n = 1
+
+    response = await create_chat_completion(request)
+
+    response_text = response.choices[0]['message']['content']
+    print('整理前：' + response_text)
+    """
     completion = openai.ChatCompletion.create(model=request.model,
                                               messages=request.messages,
                                               max_tokens=request.max_tokens,
@@ -104,17 +115,27 @@ def chat_policy_completions(request: ChatCompletionRequest):
                                               presence_penalty=request.presence_penalty,
                                               frequency_penalty=request.frequency_penalty,
                                               stream=False)   # disable streaming as we will further process
+    """
 
-    #print('整理前：' + completion.choices[0]['message']['content'])
-    response = rewrite_text(completion.choices[0]['message']['content'])
-    #print('整理后：' + response)
-    return response
+    p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
+          f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{response_text}")
+    messages = [{"role": "user", "content": p}]
+    format_request = ChatCompletionRequest(model="chatglm-6b",
+                                           messages=messages,
+                                           max_tokens=1024,
+                                           temperature=0,
+                                           top_p=0.1,
+                                           n=1,
+                                           stream=False)
+                                           #stream=request_stream)
+    format_response = await create_chat_completion(format_request)
+    print('整理后：' + format_response.choices[0]['message']['content'])
+    return format_response
 
 
 def rewrite_text(text):
     """ 通过LLM 的 chatcompletion 对输入的文本进行重写"""
-    p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
-         "譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{text}")
+    p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{text}")
     messages = [{"role": "user", "content": p}]
     completion = openai.ChatCompletion.create(model="chatglm-6b",
                                               messages=messages,
