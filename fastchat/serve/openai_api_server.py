@@ -499,7 +499,11 @@ async def create_completion(request: CompletionRequest):
     if error_check_ret is not None:
         return error_check_ret
 
+    logger.info('Request:' + str(request))
+
     request.prompt = process_input(request.model, request.prompt)
+
+    logger.info('Prompt:' + str(request.prompt))
 
     for text in request.prompt:
         error_check_ret = await check_length(request, text, request.max_tokens)
