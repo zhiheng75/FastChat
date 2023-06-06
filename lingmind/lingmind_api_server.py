@@ -88,7 +88,7 @@ class RewriteRequest(BaseModel):
     user: Optional[str] = None
 
 
-@app.post("/v1/chat/policy_completions")
+@app.post("/demo/chat/completions")
 async def chat_policy_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含两个步骤：
         - 通过LLM API 的 /chat/completion 接口生成答案
