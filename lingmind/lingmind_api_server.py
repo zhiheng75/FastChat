@@ -102,7 +102,8 @@ async def chat_policy_completions(request: ChatCompletionRequest):
 
     response = await create_chat_completion(request)
 
-    response_text = response.choices[0]['message']['content']
+    print(response.choices[0])
+    response_text = response.choices[0].message.content
     print('整理前：' + response_text)
     """
     completion = openai.ChatCompletion.create(model=request.model,
@@ -126,10 +127,10 @@ async def chat_policy_completions(request: ChatCompletionRequest):
                                            temperature=0,
                                            top_p=0.1,
                                            n=1,
-                                           stream=False)
-                                           #stream=request_stream)
+                                           stream=request_stream)
     format_response = await create_chat_completion(format_request)
-    print('整理后：' + format_response.choices[0]['message']['content'])
+    if not request_stream:
+        print('整理后：' + format_response.choices[0].message.content)
     return format_response
 
 
