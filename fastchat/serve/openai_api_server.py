@@ -57,6 +57,7 @@ from fastchat.protocol.openai_api_protocol import (
     ModelPermission,
     UsageInfo,
 )
+from fastchat.utils import build_logger
 
 from fastchat.protocol.api_protocol import (
     APIChatCompletionRequest,
@@ -106,6 +107,7 @@ async def check_api_key(
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
+    logger.error(f'Status = {code}: {message}')
     return JSONResponse(
         ErrorResponse(message=message, code=code).dict(), status_code=400
     )
