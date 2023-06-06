@@ -52,8 +52,10 @@ from fastchat.protocol.openai_api_protocol import (
     TokenCheckResponse,
     UsageInfo,
 )
+from fastchat.utils import build_logger
 
-logger = logging.getLogger(__name__)
+
+logger = build_logger("openai_api_server", "openai_api_server.log")
 
 
 class AppSettings(BaseSettings):
@@ -68,6 +70,7 @@ headers = {"User-Agent": "FastChat API Server"}
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
+    logger.error(f'Status = {code}: {message}')
     return JSONResponse(
         ErrorResponse(message=message, code=code).dict(), status_code=400
     )
