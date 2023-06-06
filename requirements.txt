@@ -1,6 +1,7 @@
 # pytorch
 # nvcc
-flash_attn
+packaging
+#flash_attn
 einops
 transformers
 sentencepiece
@@ -14,3 +15,4 @@ uvicorn
 httpx
 shortuuid
 tiktoken
+openai
