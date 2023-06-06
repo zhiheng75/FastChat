@@ -113,11 +113,18 @@ def create_error_response(code: int, message: str) -> JSONResponse:
     )
 
 
+def create_error_response_v2(code: int, message: str, request) -> JSONResponse:
+    error_message = {'Status': code, 'Message': message, 'Request': json.dumps(request)}
+    logger.error(error_message)
+    return JSONResponse(
+        ErrorResponse(message=message, code=code).dict(), status_code=400
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    message = {'Excption': str(exc), 'Request': request}
-    # return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
-    return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, json.dumps(message))
+    error_message = {'Excption': str(exc), 'Request': request}
+    return create_error_response_v2(ErrorCode.VALIDATION_TYPE_ERROR, str(exc), request)
 
 
 async def check_model(request) -> Optional[JSONResponse]:
@@ -130,9 +137,10 @@ async def check_model(request) -> Optional[JSONResponse]:
         except:
             models_ret = await client.post(controller_address + "/list_models")
             models = models_ret.json()["models"]
-            ret = create_error_response(
+            ret = create_error_response_v2(
                 ErrorCode.INVALID_MODEL,
                 f"Only {'&&'.join(models)} allowed now, your model {request.model}",
+                request
             )
     return ret
 
@@ -158,13 +166,14 @@ async def check_length(request, prompt, max_tokens):
         token_num = response.json()["count"]
 
     if token_num + max_tokens > context_len:
-        return create_error_response(
+        return create_error_response_v2(
             ErrorCode.CONTEXT_OVERFLOW,
             f"This model's maximum context length is {context_len} tokens. "
             f"However, you requested {max_tokens + token_num} tokens "
             f"({token_num} in the messages, "
             f"{max_tokens} in the completion). "
             f"Please reduce the length of the messages or completion.",
+            request
         )
     else:
         return None
