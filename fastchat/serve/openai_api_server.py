@@ -77,7 +77,7 @@ def create_error_response(code: int, message: str) -> JSONResponse:
 
 
 def create_error_response_v2(code: int, message: str, request) -> JSONResponse:
-    error_message = {'Status': code, 'Message': message, 'Request': json.dumps(request.__dict__)}
+    error_message = {'Status': code, 'Message': message, 'Request': json.dumps(request.__dict__, ensure_ascii=False)}
     logger.error(error_message)
     return JSONResponse(
         ErrorResponse(message=message, code=code).dict(), status_code=400
