@@ -1,7 +1,7 @@
 #curl http://gpu.qrgraph.com:9308/v1/chat/completions \
 #    "messages": [{"role": "user", "content": "你是一个回答用户提问的政务助手。用分行的列表来回答以下这个问题：有哪些情形不能办理新车上牌手续？"}],
 #curl http://localhost:9999/v1/chat/policy_completions \
-curl http://gpu.qrgraph.com:9307/v1/chat/policy_completions \
+curl http://gpu.qrgraph.com:9307/demo/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "chatglm-6b-zhongke",
