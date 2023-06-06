@@ -121,6 +121,7 @@ async def validation_exception_handler(request, exc):
 async def check_model(request) -> Optional[JSONResponse]:
     controller_address = app_settings.controller_address
     ret = None
+    logger.info(f'Model Requested: {request.model}')
     async with httpx.AsyncClient() as client:
         try:
             _worker_addr = await _get_worker_address(request.model, client)
