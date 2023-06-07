@@ -3,15 +3,9 @@
 Usage:
 python3 -m lingmind.api_server
 """
-
-import asyncio
-
 import argparse
-import asyncio
 import json
 import openai
-
-from typing import Generator, Optional, Union, Dict, List, Any
 
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,18 +42,8 @@ from fastchat.utils import build_logger
 
 
 logger = build_logger(__name__, __name__+'.log')
-
-
-#class AppSettings(BaseSettings):
-#    # The address of the model controller.
-#    llm_api_base: str = "http://gpu.qrgraph.com:9308/v1"
-
-
-#app_settings = AppSettings()
 app = fastapi.FastAPI()
 headers = {"User-Agent": "LingMind API Server"}
-
-#openai.api_base = app_settings.llm_api_base
 
 
 def create_error_response(code: int, message: str) -> JSONResponse:
@@ -74,78 +58,83 @@ async def validation_exception_handler(request, exc):
     return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
 
 
-class RewriteRequest(BaseModel):
-    model: str
-    messages: str
-    temperature: Optional[float] = 0.1
-    top_p: Optional[float] = 0.1
-    n: Optional[int] = 1
-    max_tokens: Optional[int] = None
-    stop: Optional[Union[str, List[str]]] = None
-    stream: Optional[bool] = False
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    user: Optional[str] = None
+def get_last_user_question(request: ChatCompletionRequest) -> str:
+    """
+        Obtain the latest user question from the request.
+    """
+    user_question = None
+    if isinstance(request.messages, str):
+        user_question = request.messages
+    else:
+        # [{"role": "user", "content": "some content"}]
+        user_question = request.messages[-1]['content']
+    return user_question
 
 
 @app.post("/demo/chat/completions")
 async def chat_policy_completions(request: ChatCompletionRequest):
-    """ 政务问答生成。主要包含两个步骤：
-        - 通过LLM API 的 /chat/completion 接口生成答案
-        - 通过LLM API 的 /completion 接口对答案进行重写
+    """ 政务问答生成。主要包含以下步骤：
+        - 判断问题是否与政务相关
+            - 政务相关问题通过政务LLM生成答案，然后通过ChatGLM对答案进行重写
+            - 非政务问题交由通用模型生成答案
+        TODO(zhihengw):
+          - 政务问题是否需要对历史进行裁剪
+          - 只支持 n=1
     """
     print(request)
+
+    # original settings
     request_stream = request.stream
     request_n = request.n
+
     request.stream = False
     request.n = 1
 
-    response = await create_chat_completion(request)
+    # 判断是否政务问题
+    user_question = get_last_user_question(request)
+    classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
+                               "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
+                               f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
+                               "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
+                               "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
+    classification_request = ChatCompletionRequest(model="belle-13b-zhongke",
+                                                   messages=[{"role": "user", "content": classification_question}],
+                                                   max_tokens=1024,
+                                                   temperature=0.1,
+                                                   top_p=0.1,
+                                                   n=1,
+                                                   stream=False)
+    classification_response = await create_chat_completion(classification_request)
+    classification_response_text = classification_response.choices[0].message.content
+    if classification_response_text.strip().startswith('是'):
+        logger.info(f'用户提问属于政务问题: {classification_question}\n选用{request.model}')
+        # this is a policy question, delegate to policy LLM.
+        # 政务相关问题交由政务模型处理
+        chat_response = await create_chat_completion(request)
+        # print(chat_response.choices[0])
+        chat_response_text = chat_response.choices[0].message.content
+        # print('整理前：' + chat_response_text)
 
-    print(response.choices[0])
-    response_text = response.choices[0].message.content
-    print('整理前：' + response_text)
-    """
-    completion = openai.ChatCompletion.create(model=request.model,
-                                              messages=request.messages,
-                                              max_tokens=request.max_tokens,
-                                              temperature=request.temperature,
-                                              top_p=request.top_p,
-                                              n=request.n,
-                                              stop=request.stop,
-                                              presence_penalty=request.presence_penalty,
-                                              frequency_penalty=request.frequency_penalty,
-                                              stream=False)   # disable streaming as we will further process
-    """
-
-    p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
-          f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{response_text}")
-    messages = [{"role": "user", "content": p}]
-    format_request = ChatCompletionRequest(model="chatglm-6b",
-                                           messages=messages,
-                                           max_tokens=1024,
-                                           temperature=0,
-                                           top_p=0.1,
-                                           n=1,
-                                           stream=request_stream)
-    format_response = await create_chat_completion(format_request)
-    if not request_stream:
-        print('整理后：' + format_response.choices[0].message.content)
-    return format_response
-
-
-def rewrite_text(text):
-    """ 通过LLM 的 chatcompletion 对输入的文本进行重写"""
-    p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{text}")
-    messages = [{"role": "user", "content": p}]
-    completion = openai.ChatCompletion.create(model="chatglm-6b",
-                                              messages=messages,
-                                              max_tokens=1024,
-                                              temperature=0,
-                                              top_p=0.1,
-                                              n=1,
-                                              stream=False)
-    return completion.choices[0]['message']['content']
+        # 整理输出格式
+        p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
+             f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
+        messages = [{"role": "user", "content": p}]
+        format_request = ChatCompletionRequest(model="chatglm-6b",
+                                               messages=messages,
+                                               max_tokens=1024,
+                                               temperature=0,
+                                               top_p=0.1,
+                                               n=1,
+                                               stream=request_stream)
+        format_response = await create_chat_completion(format_request)
+        if not request_stream:
+            print('整理后：' + format_response.choices[0].message.content)
+        return format_response
+    else:
+        # General questions. Leave it to chatglm.
+        request.model = 'chatglm-6b'
+        logger.info(f'用户提问不属于属于政务问题: {classification_question}\n选用{request.model}')
+        return await create_chat_completion(request)
 
 
 if __name__ == "__main__":
