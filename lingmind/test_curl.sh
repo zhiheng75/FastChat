@@ -1,19 +1,11 @@
 #curl http://gpu.qrgraph.com:9308/v1/chat/completions \
 #    "messages": [{"role": "user", "content": "你是一个回答用户提问的政务助手。用分行的列表来回答以下这个问题：有哪些情形不能办理新车上牌手续？"}],
 #curl http://localhost:9999/v1/chat/policy_completions \
-#    "messages": [{"role": "user", "content": "有哪些情形不能办理新车上牌手续？"}],
-#    "messages": [{"role": "user", "content": "判断以下描述是否与政府相关部门的业务相关：“有哪些情形不能办理新车上牌手续？”。用以下三个答案对应的英文字母编号作为回答：A. 相关；B. 不相关；C. 不清楚。"}],
-#    "messages": [{"role": "user", "content": "判断以下描述是否与政府相关部门的业务相关：“有哪些情形不能办理新车上牌手续？”。相关回答:A, 不相关回答:B，不清楚回答:C。"}],
-#    "messages": [{"role": "user", "content": "判断以下描述是否与政府相关部门的业务相关：“有哪些情形不能办理新车上牌手续？”。可选答案：(A)相关; (B)不相关; (C):不清楚。"}],
-#    "messages": [{"role": "user", "content": "判断以下问题是否与政府部门的业务内容直接有关：“有哪些情形不能办理新车上牌手续？”。普通问候语应该被认定为不相关。选择最可能的一个选项作为答案：(A)相关;(B)不相关。"}],
-#    "messages": [{"role": "user", "content": "判断以下问题是否与政府部门的业务内容直接有关：“今天天气怎么样?”。选择最可能的一个选项作为答案：(A)相关;(B)不相关。"}],
-#    "messages": [{"role": "user", "content": "你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。现在用户提出的问题是:“今天北京会下雨么?”，你需要判定这个问题是否属于政府业务内容, 从”是“/”否“里面选择一个最可能的作为你的答案。譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。"}],
-#curl http://gpu.qrgraph.com:9307/demo/chat/completions \
-curl http://gpu.qrgraph.com:9308/v1/chat/completions \
+curl http://gpu.qrgraph.com:9307/demo/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "belle-13b-zhongke",
-    "messages": [{"role": "user", "content": "你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。现在用户提出的问题是:“燃气燃具维修资质申请的受理条件是什么？”，你需要判定这个问题是否属于政府业务内容, 你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。"}],
+    "model": "chatglm-6b-zhongke",
+    "messages": [{"role": "user", "content": "有哪些情形不能办理新车上牌手续？"}],
     "max_tokens": 1024,
     "temperature": 0.1,
     "top_p": 0.1,
