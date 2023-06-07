@@ -45,6 +45,8 @@ logger = build_logger(__name__, __name__+'.log')
 app = fastapi.FastAPI()
 headers = {"User-Agent": "LingMind API Server"}
 
+_use_auto_agent = False
+
 
 def create_error_response(code: int, message: str) -> JSONResponse:
     logger.error(f'Status = {code}: {message}')
@@ -82,8 +84,6 @@ async def chat_policy_completions(request: ChatCompletionRequest):
           - 只支持 n=1
     """
 
-    auto_agent = False
-
     print(request)
 
     # original settings
@@ -94,7 +94,8 @@ async def chat_policy_completions(request: ChatCompletionRequest):
     request.n = 1
 
     # 判断是否政务问题
-    if auto_agent:
+    global _use_auto_agent
+    if _use_auto_agent:
         user_question = get_last_user_question(request)
         classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
                                    "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
@@ -109,10 +110,13 @@ async def chat_policy_completions(request: ChatCompletionRequest):
                                                        n=1,
                                                        stream=False)
         classification_response = await create_chat_completion(classification_request)
+        if not isinstance(classification_response, ChatCompletionResponse):
+            # error
+            return classification_response
         classification_response_text = classification_response.choices[0].message.content
 
-    if not auto_agent or classification_response_text.strip().startswith('是'):
-        if auto_agent:
+    if not _use_auto_agent or classification_response_text.strip().startswith('是'):
+        if _use_auto_agent:
             logger.info(f'用户提问属于政务问题: {user_question}\n模型选用:{request.model}')
         # this is a policy question, delegate to policy LLM.
         # 政务相关问题交由政务模型处理
@@ -133,7 +137,7 @@ async def chat_policy_completions(request: ChatCompletionRequest):
                                                n=1,
                                                stream=request_stream)
         format_response = await create_chat_completion(format_request)
-        if not request_stream:
+        if not request_stream and isinstance(format_response, ChatCompletionResponse):
             print('整理后：' + format_response.choices[0].message.content)
         return format_response
     else:
@@ -149,8 +153,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--host", type=str, default="localhost", help="host name")
     parser.add_argument("--port", type=int, default=9306, help="port number")
+    #parser.add_argument(
+    #    "--llm-api-base", type=str, default="http://gpu.qrgraph.com:9308/v1"
+    #)
     parser.add_argument(
-        "--llm-api-base", type=str, default="http://gpu.qrgraph.com:9308/v1"
+        "--use-auto-agent", type=bool, default=False, help="use auto agent to select model."
     )
     parser.add_argument(
         "--allow-credentials", action="store_true", help="allow credentials"
@@ -174,6 +181,8 @@ if __name__ == "__main__":
         allow_headers=args.allowed_headers,
     )
     #app_settings.llm_api_base = args.llm_api_base
+    global _use_auto_agent
+    _use_auto_agent = args.use_auto_agent
 
     openai.api_key = "EMPTY"  # Not support yet
     openai.api_base = args.llm_api_base
