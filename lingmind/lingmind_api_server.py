@@ -73,12 +73,12 @@ def get_last_user_question(request: ChatCompletionRequest) -> str:
     return user_question
 
 
-@app.post("/demo/completions")
-async def demo_create_completion(request: CompletionRequest):
-    """
-       简单复制fastchat的completion API
-    """
-    return await create_completion(request)
+#@app.post("/demo/completions")
+#async def demo_create_completion(request: CompletionRequest):
+#    """
+#       简单复制fastchat的completion API
+#    """
+#    return await create_completion(request)
 
 @app.post("/demo/chat/completions")
 async def demo_chat_policy_completions(request: ChatCompletionRequest):
@@ -130,11 +130,14 @@ async def demo_chat_policy_completions(request: ChatCompletionRequest):
         chat_response = await create_chat_completion(request)
         # print(chat_response.choices[0])
         chat_response_text = chat_response.choices[0].message.content
-        # print('整理前：' + chat_response_text)
+        print('整理前：' + chat_response_text)
 
         # 整理输出格式
-        p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式，但不能重复。只需输出改写后的正文，不能包含回答提示信息。"
-             f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
+        #p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。如果内容包含多个步骤，用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
+        #     f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
+        p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
+             f"含有多个要点要点的部分需要以完整的列表展示，譬如输入为“你好。这是第一点。这是第二点。“, 输出为“你好！\n 1.第一点。\n 2.第二点。“。"
+             f"待整理的文本内容为：{chat_response_text}")
         messages = [{"role": "user", "content": p}]
         format_request = ChatCompletionRequest(model="chatglm-6b",
                                                messages=messages,
@@ -151,8 +154,10 @@ async def demo_chat_policy_completions(request: ChatCompletionRequest):
         # General questions. Leave it to chatglm.
         request.model = 'chatglm-6b'
         logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
+        # remember to restore the original request
+        request.stream = request_stream
         chat_response = await create_chat_completion(request)
-        return chat_response
+        return chat_response 
 
 
 if __name__ == "__main__":
