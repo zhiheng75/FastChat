@@ -74,14 +74,14 @@ def get_last_user_question(request: ChatCompletionRequest) -> str:
 
 
 @app.post("/demo/completions")
-async def create_completion(request: CompletionRequest):
+async def demo_create_completion(request: CompletionRequest):
     """
        简单复制fastchat的completion API
     """
     return await create_completion(request)
 
 @app.post("/demo/chat/completions")
-async def chat_policy_completions(request: ChatCompletionRequest):
+async def demo_chat_policy_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
         - 判断问题是否与政务相关
             - 政务相关问题通过政务LLM生成答案，然后通过ChatGLM对答案进行重写
