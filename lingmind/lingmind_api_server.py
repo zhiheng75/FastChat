@@ -81,6 +81,9 @@ async def chat_policy_completions(request: ChatCompletionRequest):
           - 政务问题是否需要对历史进行裁剪
           - 只支持 n=1
     """
+
+    auto_agent = False
+
     print(request)
 
     # original settings
@@ -91,23 +94,26 @@ async def chat_policy_completions(request: ChatCompletionRequest):
     request.n = 1
 
     # 判断是否政务问题
-    user_question = get_last_user_question(request)
-    classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
-                               "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
-                               f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
-                               "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
-                               "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
-    classification_request = ChatCompletionRequest(model="belle-13b-zhongke",
-                                                   messages=[{"role": "user", "content": classification_question}],
-                                                   max_tokens=1024,
-                                                   temperature=0.1,
-                                                   top_p=0.1,
-                                                   n=1,
-                                                   stream=False)
-    classification_response = await create_chat_completion(classification_request)
-    classification_response_text = classification_response.choices[0].message.content
-    if classification_response_text.strip().startswith('是'):
-        logger.info(f'用户提问属于政务问题: {user_question}\n模型选用:{request.model}')
+    if auto_agent:
+        user_question = get_last_user_question(request)
+        classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
+                                   "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
+                                   f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
+                                   "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
+                                   "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
+        classification_request = ChatCompletionRequest(model="belle-13b-zhongke",
+                                                       messages=[{"role": "user", "content": classification_question}],
+                                                       max_tokens=1024,
+                                                       temperature=0.1,
+                                                       top_p=0.1,
+                                                       n=1,
+                                                       stream=False)
+        classification_response = await create_chat_completion(classification_request)
+        classification_response_text = classification_response.choices[0].message.content
+
+    if not auto_agent or classification_response_text.strip().startswith('是'):
+        if auto_agent:
+            logger.info(f'用户提问属于政务问题: {user_question}\n模型选用:{request.model}')
         # this is a policy question, delegate to policy LLM.
         # 政务相关问题交由政务模型处理
         chat_response = await create_chat_completion(request)
