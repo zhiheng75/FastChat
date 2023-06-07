@@ -11,7 +11,7 @@ import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastchat.constants import WORKER_API_TIMEOUT, WORKER_API_EMBEDDING_BATCH_SIZE, ErrorCode
-from fastchat.serve.openai_api_server import create_chat_completion
+from fastchat.serve.openai_api_server import create_chat_completion, create_completion
 from pydantic import BaseSettings, BaseModel
 import uvicorn
 from fastapi.exceptions import RequestValidationError
@@ -72,6 +72,13 @@ def get_last_user_question(request: ChatCompletionRequest) -> str:
         user_question = request.messages[-1]['content']
     return user_question
 
+
+@app.post("/demo/completions")
+async def create_completion(request: CompletionRequest):
+    """
+       简单复制fastchat的completion API
+    """
+    return create_completion(request)
 
 @app.post("/demo/chat/completions")
 async def chat_policy_completions(request: ChatCompletionRequest):
