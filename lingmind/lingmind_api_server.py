@@ -78,7 +78,7 @@ async def create_completion(request: CompletionRequest):
     """
        简单复制fastchat的completion API
     """
-    return create_completion(request)
+    return await create_completion(request)
 
 @app.post("/demo/chat/completions")
 async def chat_policy_completions(request: ChatCompletionRequest):
