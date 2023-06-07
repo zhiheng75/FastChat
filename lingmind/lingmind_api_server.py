@@ -151,7 +151,8 @@ async def demo_chat_policy_completions(request: ChatCompletionRequest):
         # General questions. Leave it to chatglm.
         request.model = 'chatglm-6b'
         logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
-        return await create_chat_completion(request)
+        chat_response = await create_chat_completion(request)
+        return chat_response
 
 
 if __name__ == "__main__":
