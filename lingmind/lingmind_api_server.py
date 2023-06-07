@@ -126,7 +126,7 @@ async def chat_policy_completions(request: ChatCompletionRequest):
         # print('整理前：' + chat_response_text)
 
         # 整理输出格式
-        p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
+        p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。尽可能用列表作为输出格式，但不能重复。只需输出改写后的正文，不能包含回答提示信息。"
              f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
         messages = [{"role": "user", "content": p}]
         format_request = ChatCompletionRequest(model="chatglm-6b",
@@ -181,11 +181,10 @@ if __name__ == "__main__":
         allow_headers=args.allowed_headers,
     )
     #app_settings.llm_api_base = args.llm_api_base
-    global _use_auto_agent
     _use_auto_agent = args.use_auto_agent
 
-    openai.api_key = "EMPTY"  # Not support yet
-    openai.api_base = args.llm_api_base
+    #openai.api_key = "EMPTY"  # Not support yet
+    #openai.api_base = args.llm_api_base
 
     logger.info(f"args: {args}")
 
