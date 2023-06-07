@@ -107,7 +107,7 @@ async def chat_policy_completions(request: ChatCompletionRequest):
     classification_response = await create_chat_completion(classification_request)
     classification_response_text = classification_response.choices[0].message.content
     if classification_response_text.strip().startswith('是'):
-        logger.info(f'用户提问属于政务问题: {classification_question}\n选用{request.model}')
+        logger.info(f'用户提问属于政务问题: {user_question}\n模型选用:{request.model}')
         # this is a policy question, delegate to policy LLM.
         # 政务相关问题交由政务模型处理
         chat_response = await create_chat_completion(request)
@@ -133,7 +133,7 @@ async def chat_policy_completions(request: ChatCompletionRequest):
     else:
         # General questions. Leave it to chatglm.
         request.model = 'chatglm-6b'
-        logger.info(f'用户提问不属于属于政务问题: {classification_question}\n选用{request.model}')
+        logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
         return await create_chat_completion(request)
 
 
