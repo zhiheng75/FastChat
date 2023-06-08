@@ -8,51 +8,31 @@ import json
 import openai
 
 import fastapi
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastchat.constants import WORKER_API_TIMEOUT, WORKER_API_EMBEDDING_BATCH_SIZE, ErrorCode
-from fastchat.serve.openai_api_server import create_chat_completion, create_completion
-from pydantic import BaseSettings, BaseModel
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastchat.constants import ErrorCode
 from fastapi.exceptions import RequestValidationError
+from fastchat.serve.openai_api_server import (
+    create_chat_completion,
+    create_completion,
+    create_error_response,
+)
 from fastchat.protocol.openai_api_protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
-    ChatCompletionResponseStreamChoice,
-    ChatCompletionStreamResponse,
-    ChatMessage,
-    ChatCompletionResponseChoice,
     CompletionRequest,
-    CompletionResponse,
-    CompletionResponseChoice,
-    DeltaMessage,
-    CompletionResponseStreamChoice,
-    CompletionStreamResponse,
-    EmbeddingsRequest,
-    EmbeddingsResponse,
     ErrorResponse,
-    ModelCard,
-    ModelList,
-    ModelPermission,
-    TokenCheckRequest,
-    TokenCheckResponse,
-    UsageInfo,
 )
 from fastchat.utils import build_logger
+from pydantic import BaseSettings, BaseModel
 
 
-logger = build_logger(__name__, __name__+'.log')
+logger = build_logger('lingmind_api_server', 'lingmind_api_server.log')
 app = fastapi.FastAPI()
 headers = {"User-Agent": "LingMind API Server"}
 
 _use_auto_agent = False
-
-
-def create_error_response(code: int, message: str) -> JSONResponse:
-    logger.error(f'Status = {code}: {message}')
-    return JSONResponse(
-        ErrorResponse(message=message, code=code).dict(), status_code=400
-    )
 
 
 @app.exception_handler(RequestValidationError)
@@ -60,7 +40,7 @@ async def validation_exception_handler(request, exc):
     return create_error_response(ErrorCode.VALIDATION_TYPE_ERROR, str(exc))
 
 
-def get_last_user_question(request: ChatCompletionRequest) -> str:
+def get_last_question(request: ChatCompletionRequest) -> str:
     """
         Obtain the latest user question from the request.
     """
@@ -73,15 +53,31 @@ def get_last_user_question(request: ChatCompletionRequest) -> str:
     return user_question
 
 
-#@app.post("/demo/completions")
-#async def demo_create_completion(request: CompletionRequest):
-#    """
-#       简单复制fastchat的completion API
-#    """
-#    return await create_completion(request)
+def inject_identify_prompt(request: ChatCompletionRequest) -> ChatCompletionResponse:
+    """
+        Insert identity prompt data into a chat request. This is a temporary fix before we build this data into
+        the model via fine-tuning.
+    """
+    identify_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
+                        {"role": "assistant", "content": "好的。"}]
+    if isinstance(ChatCompletionRequest.messages, str):
+        request.messages = identify_prompts.append({"role": "user", "content": request.messages})
+    else:
+        # list
+        request.messages = identify_prompts.extend(request.messages)
+    return request
+
+
+@app.post("/demo/completions")
+async def demo_completion(request: CompletionRequest):
+    """
+       简单复制fastchat的completion API
+    """
+    return await create_completion(request)
+
 
 @app.post("/demo/chat/completions")
-async def demo_chat_policy_completions(request: ChatCompletionRequest):
+async def demo_chat_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
         - 判断问题是否与政务相关
             - 政务相关问题通过政务LLM生成答案，然后通过ChatGLM对答案进行重写
@@ -103,7 +99,7 @@ async def demo_chat_policy_completions(request: ChatCompletionRequest):
     # 判断是否政务问题
     global _use_auto_agent
     if _use_auto_agent:
-        user_question = get_last_user_question(request)
+        user_question = get_last_question(request)
         classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
                                    "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
                                    f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
@@ -154,10 +150,10 @@ async def demo_chat_policy_completions(request: ChatCompletionRequest):
         # General questions. Leave it to chatglm.
         request.model = 'chatglm-6b'
         logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
+        request = inject_identify_prompt(request)
         # remember to restore the original request
         request.stream = request_stream
-        chat_response = await create_chat_completion(request)
-        return chat_response 
+        return await create_chat_completion(request)
 
 
 if __name__ == "__main__":
@@ -166,11 +162,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--host", type=str, default="localhost", help="host name")
     parser.add_argument("--port", type=int, default=9306, help="port number")
-    #parser.add_argument(
-    #    "--llm-api-base", type=str, default="http://gpu.qrgraph.com:9308/v1"
-    #)
     parser.add_argument(
-        "--use-auto-agent", type=bool, default=False, help="use auto agent to select model."
+        "--use-auto-agent", action="store_true", help="use auto agent to select model."
     )
     parser.add_argument(
         "--allow-credentials", action="store_true", help="allow credentials"
@@ -193,11 +186,7 @@ if __name__ == "__main__":
         allow_methods=args.allowed_methods,
         allow_headers=args.allowed_headers,
     )
-    #app_settings.llm_api_base = args.llm_api_base
     _use_auto_agent = args.use_auto_agent
-
-    #openai.api_key = "EMPTY"  # Not support yet
-    #openai.api_base = args.llm_api_base
 
     logger.info(f"args: {args}")
 
