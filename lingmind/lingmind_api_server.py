@@ -60,7 +60,7 @@ def inject_identify_prompt(request: ChatCompletionRequest) -> ChatCompletionResp
     """
     identify_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
                         {"role": "assistant", "content": "好的。"}]
-    if isinstance(ChatCompletionRequest.messages, str):
+    if isinstance(request.messages, str):
         request.messages = identify_prompts.append({"role": "user", "content": request.messages})
     else:
         # list
