@@ -782,7 +782,7 @@ async def count_tokens(request: APITokenCheckRequest):
 
 
 @app.post("/api/v1/chat/completions")
-async def create_chat_completion(request: APIChatCompletionRequest):
+async def api_create_chat_completion(request: APIChatCompletionRequest):
     """Creates a completion for the chat message"""
     error_check_ret = await check_model(request)
     if error_check_ret is not None:
