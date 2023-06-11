@@ -145,7 +145,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         if _use_auto_agent:
             logger.info(f'用户提问属于政务问题: {user_question}')
         # this is a policy question, delegate to ES.
-        chat_response_text = search_es(user_question)
+        chat_response_text = await search_es(user_question)
         if not chat_response_text:
             logger.debug(f'The question is handled by LLM: {request.model}')
             # result not found in ES, handle it by the policy LLM.
