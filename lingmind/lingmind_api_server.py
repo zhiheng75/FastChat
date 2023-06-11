@@ -5,12 +5,10 @@ python3 -m lingmind.api_server
 """
 import argparse
 import json
-import openai
 
 import fastapi
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastchat.constants import ErrorCode
 from fastapi.exceptions import RequestValidationError
 from fastchat.serve.openai_api_server import (
@@ -22,7 +20,6 @@ from fastchat.protocol.openai_api_protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
     CompletionRequest,
-    ErrorResponse,
 )
 from fastchat.utils import build_logger
 from pydantic import BaseSettings, BaseModel
@@ -69,14 +66,6 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
         request.messages = identity_prompts
     print(request.messages)
     return request
-
-
-@app.post("/demo/completions")
-async def demo_completion(request: CompletionRequest):
-    """
-       简单复制fastchat的completion API
-    """
-    return await create_completion(request)
 
 
 @app.post("/demo/chat/completions")
