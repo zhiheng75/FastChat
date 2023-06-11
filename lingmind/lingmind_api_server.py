@@ -53,18 +53,21 @@ def get_last_question(request: ChatCompletionRequest) -> str:
     return user_question
 
 
-def inject_identify_prompt(request: ChatCompletionRequest) -> ChatCompletionResponse:
+def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequest:
     """
         Insert identity prompt data into a chat request. This is a temporary fix before we build this data into
         the model via fine-tuning.
     """
-    identify_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
+    print(request.messages)
+    identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
                         {"role": "assistant", "content": "好的。"}]
     if isinstance(request.messages, str):
-        request.messages = identify_prompts.append({"role": "user", "content": request.messages})
+        request.messages = identity_prompts.append({"role": "user", "content": request.messages})
     else:
         # list
-        request.messages = identify_prompts.extend(request.messages)
+        identity_prompts.extend(request.messages)
+        request.messages = identity_prompts
+    print(request.messages)
     return request
 
 
@@ -150,9 +153,10 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         # General questions. Leave it to chatglm.
         request.model = 'chatglm-6b'
         logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
-        request = inject_identify_prompt(request)
+        request = inject_identity_prompt(request)
         # remember to restore the original request
         request.stream = request_stream
+        print(request.__dict__)
         return await create_chat_completion(request)
 
 
