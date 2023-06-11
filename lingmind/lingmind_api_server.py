@@ -78,6 +78,9 @@ async def demo_chat_completions(request: ChatCompletionRequest):
           - 政务问题是否需要对历史进行裁剪
           - 只支持 n=1
     """
+    GOV_QA_MODEL = 'llm01-6b-gov'  # chatglm-6b-zhongke
+    CLASSIFICATION_MODEL = 'llm02-13b-gov'  # belle-13b-zhongke
+    QA_MODEL = 'llm01-6b'  # chatglm-6b
 
     print(request)
 
@@ -97,7 +100,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
                                    f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
                                    "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
                                    "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
-        classification_request = ChatCompletionRequest(model="belle-13b-zhongke",
+        classification_request = ChatCompletionRequest(model=CLASSIFICATION_MODEL,
                                                        messages=[{"role": "user", "content": classification_question}],
                                                        max_tokens=1024,
                                                        temperature=0.1,
@@ -127,7 +130,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
              f"含有多个要点要点的部分需要以完整的列表展示，譬如输入为“你好。这是第一点。这是第二点。“, 输出为“你好！\n 1.第一点。\n 2.第二点。“。"
              f"待整理的文本内容为：{chat_response_text}")
         messages = [{"role": "user", "content": p}]
-        format_request = ChatCompletionRequest(model="chatglm-6b",
+        format_request = ChatCompletionRequest(model=QA_MODEL,
                                                messages=messages,
                                                max_tokens=1024,
                                                temperature=0,
@@ -140,7 +143,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         return format_response
     else:
         # General questions. Leave it to chatglm.
-        request.model = 'chatglm-6b'
+        request.model = QA_MODEL
         logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
         request = inject_identity_prompt(request)
         # remember to restore the original request

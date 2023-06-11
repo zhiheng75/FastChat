@@ -55,8 +55,6 @@ from fastchat.protocol.openai_api_protocol import (
     ModelCard,
     ModelList,
     ModelPermission,
-    TokenCheckRequest,
-    TokenCheckResponse,
     UsageInfo,
 )
 from fastchat.utils import build_logger
