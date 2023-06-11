@@ -5,6 +5,8 @@ python3 -m lingmind.api_server
 """
 import argparse
 import json
+import requests
+from typing import Union
 
 import fastapi
 import uvicorn
@@ -68,6 +70,32 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
     return request
 
 
+async def search_es(question: str) -> Union[str, None]:
+    """
+       Search ES for the given question and return the answer if it hits with high confidence.
+       Currently, the confidence threshold is set to 20.
+    """
+    es_api_url = 'http://gpu.qrgraph.com:9306/search'
+    es_query_threshold = 20
+    payload = dict(question=question)
+    logger.debug(f'Question for ES: {question}')
+    try:
+        r = requests.post(es_api_url, data=payload)
+        print(r.text)
+        results = json.loads(r.text)
+        if not results:
+            return None
+        if 'score' not in results or 'answer' not in results:
+            return None
+        logger.debug(f"ES score: {results['score']}")
+        if results['score'] < es_query_threshold:
+            return None
+        return results['answer']
+    except Exception as e:
+        logger.error('Failure querying ES. ' + e)
+        return None
+
+
 @app.post("/demo/chat/completions")
 async def demo_chat_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
@@ -115,12 +143,18 @@ async def demo_chat_completions(request: ChatCompletionRequest):
 
     if not _use_auto_agent or classification_response_text.strip().startswith('是'):
         if _use_auto_agent:
-            logger.info(f'用户提问属于政务问题: {user_question}\n模型选用:{request.model}')
-        # this is a policy question, delegate to policy LLM.
-        # 政务相关问题交由政务模型处理
-        chat_response = await create_chat_completion(request)
-        # print(chat_response.choices[0])
-        chat_response_text = chat_response.choices[0].message.content
+            logger.info(f'用户提问属于政务问题: {user_question}')
+        # this is a policy question, delegate to ES.
+        chat_response_text = search_es(user_question)
+        if not chat_response_text:
+            logger.debug(f'The question is handled by LLM: {request.model}')
+            # result not found in ES, handle it by the policy LLM.
+            # ES不命中， 交由政务模型处理
+            chat_response = await create_chat_completion(request)
+            # print(chat_response.choices[0])
+            chat_response_text = chat_response.choices[0].message.content
+        else:
+            logger.debug('The question is handled by ES.')
         print('整理前：' + chat_response_text)
 
         # 整理输出格式
