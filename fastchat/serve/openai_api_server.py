@@ -55,6 +55,8 @@ from fastchat.protocol.openai_api_protocol import (
     ModelCard,
     ModelList,
     ModelPermission,
+    TokenCheckRequest,
+    TokenCheckResponse,
     UsageInfo,
 )
 from fastchat.utils import build_logger
@@ -66,7 +68,8 @@ from fastchat.protocol.api_protocol import (
     APITokenCheckResponseItem,
 )
 
-logger = logging.getLogger(__name__)
+
+logger = build_logger("openai_api_server", "openai_api_server.log")
 
 conv_template_map = {}
 
