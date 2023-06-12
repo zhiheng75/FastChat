@@ -7,6 +7,7 @@ import argparse
 import json
 import requests
 import logging
+import copy
 from typing import Union
 
 import fastapi
@@ -60,16 +61,20 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
         the model via fine-tuning.
     """
     print(request.messages)
-    identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
-                        {"role": "assistant", "content": "好的。"}]
-    if isinstance(request.messages, str):
-        request.messages = identity_prompts.append({"role": "user", "content": request.messages})
-    else:
-        # list
-        identity_prompts.extend(request.messages)
-        request.messages = identity_prompts
-    print(request.messages)
-    return request
+    user_question = get_last_question(request)
+    new_request = copy.deepcopy(request)
+    #identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
+    #                    {"role": "assistant", "content": "好的。"}]
+    identity_prompts = f'你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。现在回答用户提出的这个问题：{user_question}'
+    #if isinstance(request.messages, str):
+    #    request.messages = identity_prompts.append({"role": "user", "content": request.messages})
+    #else:
+    #    # list
+    #    identity_prompts.extend(request.messages)
+    #    request.messages = identity_prompts
+    new_request.messages = identity_prompts
+    print(new_request.messages)
+    return new_request
 
 
 async def search_es(question: str) -> Union[str, None]:
