@@ -6,6 +6,7 @@ python3 -m lingmind.api_server
 import argparse
 import json
 import requests
+import logging
 from typing import Union
 
 import fastapi
@@ -28,6 +29,7 @@ from pydantic import BaseSettings, BaseModel
 
 
 logger = build_logger('lingmind_api_server', 'lingmind_api_server.log')
+logger.setLevel(logging.DEBUG)
 app = fastapi.FastAPI()
 headers = {"User-Agent": "LingMind API Server"}
 

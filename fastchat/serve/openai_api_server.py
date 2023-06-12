@@ -68,6 +68,7 @@ from fastchat.protocol.api_protocol import (
 
 
 logger = build_logger("openai_api_server", "openai_api_server.log")
+logger.setLevel(logging.DEBUG)
 
 conv_template_map = {}
 
@@ -157,6 +158,8 @@ async def check_length(request, prompt, max_tokens):
             timeout=WORKER_API_TIMEOUT,
         )
         context_len = response.json()["context_length"]
+
+        logger.debug(f'Prompt: {prompt}')
 
         response = await client.post(
             worker_addr + "/count_token",
