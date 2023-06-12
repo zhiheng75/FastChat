@@ -99,7 +99,7 @@ async def search_knowledge(question: str) -> Union[str, None]:
             return None
         return results['answer']
     except Exception as e:
-        logger.error('Failure querying ES. ' + e)
+        logger.error('Failure querying ES: ' + e.__dict__)
         return None
 
 
@@ -149,16 +149,23 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         if response_text:
             logger.info('用户提问由知识库回答')
         else:
+            logger.info('用户提问由LLM回答')
             # 问题不在知识库，判断是否政务相关问题
+            """
             classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
                                        "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
                                        f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
                                        "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
-                                       "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
+                                       "譬如，问题:“你好!”,回答:“否”; 问题：”如何申请驾照？“，回答:“是”。")
+            """
+            classification_question = ("与工商、行政、车辆政策等有关的内容问题属于政府业务范围。"
+                                       "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务范围无关。"
+                                       "例如，当问题是:“你好”,你应该回答:“否”; 当问题是：”如何申请驾照？“，你应该回答:“是”。"
+                                       f"根据以上规则，判断以下内容是否与政务业务相关：“{user_question}”。你的回答只能是“是”或者“否”,答案是")
             classification_request = ChatCompletionRequest(model=CLASSIFICATION_MODEL,
                                                            messages=classification_question,
                                                            max_tokens=1024,
-                                                           temperature=0.1,
+                                                           temperature=0,
                                                            top_p=0.1,
                                                            n=1,
                                                            stream=False)
@@ -168,13 +175,16 @@ async def demo_chat_completions(request: ChatCompletionRequest):
                 return classification_response
             classification_response_text = classification_response.choices[0].message.content
 
-            if classification_response_text.strip().startswith('是'):
+            logger.debug(f'判断返回: {classification_response_text}')
+            if classification_response_text.strip().strip("“").startswith('是'):
                 logger.info(f'用户提问属于政务问题。通过LLM处理, 选用模型为: {request.model}')
                 original_messages = request.messages
                 request.messages = user_question
                 chat_response = await create_chat_completion(request)
                 request.messages = original_messages
-                # print(chat_response.choices[0])
+                if not isinstance(chat_response, ChatCompletionResponse):
+                    # error
+                    return chat_response
                 response_text = chat_response.choices[0].message.content
             else:
                 logger.info(f'用户提问不属于政务问题。选用模型为: {QA_MODEL}')
