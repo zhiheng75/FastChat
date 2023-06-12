@@ -120,18 +120,19 @@ async def demo_chat_completions(request: ChatCompletionRequest):
 
     request.stream = False
     request.n = 1
+    user_question = get_last_question(request)
 
     # 判断是否政务问题
     global _use_auto_agent
     if _use_auto_agent:
-        user_question = get_last_question(request)
         classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
                                    "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
                                    f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
                                    "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
                                    "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
         classification_request = ChatCompletionRequest(model=CLASSIFICATION_MODEL,
-                                                       messages=[{"role": "user", "content": classification_question}],
+                                                       #messages=[{"role": "user", "content": classification_question}],
+                                                       messages=classification_question,
                                                        max_tokens=1024,
                                                        temperature=0.1,
                                                        top_p=0.1,
@@ -152,7 +153,10 @@ async def demo_chat_completions(request: ChatCompletionRequest):
             logger.debug(f'The question is handled by LLM: {request.model}')
             # result not found in ES, handle it by the policy LLM.
             # ES不命中， 交由政务模型处理
+            original_messages = request.messages
+            request.messages = user_question
             chat_response = await create_chat_completion(request)
+            request.messages = original_messages
             # print(chat_response.choices[0])
             chat_response_text = chat_response.choices[0].message.content
         else:
@@ -165,9 +169,9 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
              f"含有多个要点要点的部分需要以完整的列表展示，譬如输入为“你好。这是第一点。这是第二点。“, 输出为“你好！\n 1.第一点。\n 2.第二点。“。"
              f"待整理的文本内容为：{chat_response_text}")
-        messages = [{"role": "user", "content": p}]
+        #messages = [{"role": "user", "content": p}]
         format_request = ChatCompletionRequest(model=QA_MODEL,
-                                               messages=messages,
+                                               messages=p,
                                                max_tokens=1024,
                                                temperature=0,
                                                top_p=0.1,
