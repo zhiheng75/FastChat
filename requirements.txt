@@ -16,3 +16,4 @@ httpx
 shortuuid
 tiktoken
 openai
+black[jupyter]
