@@ -80,10 +80,10 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
 async def search_knowledge(question: str) -> Union[str, None]:
     """
        Search ES for the given question and return the answer if it hits with high confidence.
-       Currently, the confidence threshold is set to 20.
+       Currently, the confidence threshold is set to 25.
     """
     es_api_url = 'http://gpu.qrgraph.com:9306/search'
-    es_query_threshold = 20
+    es_query_threshold = 25
     payload = dict(question=question)
     logger.debug(f'Question for ES: {question}')
     try:
