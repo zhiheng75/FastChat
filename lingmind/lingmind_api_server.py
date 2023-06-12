@@ -77,7 +77,7 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
     return new_request
 
 
-async def search_es(question: str) -> Union[str, None]:
+async def search_knowledge(question: str) -> Union[str, None]:
     """
        Search ES for the given question and return the answer if it hits with high confidence.
        Currently, the confidence threshold is set to 20.
@@ -103,6 +103,13 @@ async def search_es(question: str) -> Union[str, None]:
         return None
 
 
+def prepare_request(request: ChatCompletionRequest) -> ChatCompletionRequest:
+    new_request = copy.deepcopy(request)
+    # 为了避开Fastchat内置的聊天历史机制，只保留最后一个用户问题。
+    new_request.messages = get_last_question(request)
+    return new_request
+
+
 @app.post("/demo/chat/completions")
 async def demo_chat_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
@@ -125,56 +132,69 @@ async def demo_chat_completions(request: ChatCompletionRequest):
 
     request.stream = False
     request.n = 1
-    user_question = get_last_question(request)
 
     # 判断是否政务问题
     global _use_auto_agent
-    if _use_auto_agent:
-        classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
-                                   "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
-                                   f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
-                                   "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
-                                   "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
-        classification_request = ChatCompletionRequest(model=CLASSIFICATION_MODEL,
-                                                       #messages=[{"role": "user", "content": classification_question}],
-                                                       messages=classification_question,
-                                                       max_tokens=1024,
-                                                       temperature=0.1,
-                                                       top_p=0.1,
-                                                       n=1,
-                                                       stream=False)
-        classification_response = await create_chat_completion(classification_request)
-        if not isinstance(classification_response, ChatCompletionResponse):
-            # error
-            return classification_response
-        classification_response_text = classification_response.choices[0].message.content
+    if not _use_auto_agent:
+        # 不使用模型自动选择
+        new_request = prepare_request(request)
+        return await create_chat_completion(new_request)
+    else:
+        # 模型自动选择
+        user_question = get_last_question(request)
+        logger.info(f'用户提问: {user_question}')
+        # 查询ES看是否命中知识库
+        response_text = await search_knowledge(user_question)
 
-    if not _use_auto_agent or classification_response_text.strip().startswith('是'):
-        if _use_auto_agent:
-            logger.info(f'用户提问属于政务问题: {user_question}')
-        # this is a policy question, delegate to ES.
-        chat_response_text = await search_es(user_question)
-        if not chat_response_text:
-            logger.debug(f'The question is handled by LLM: {request.model}')
-            # result not found in ES, handle it by the policy LLM.
-            # ES不命中， 交由政务模型处理
-            original_messages = request.messages
-            request.messages = user_question
-            chat_response = await create_chat_completion(request)
-            request.messages = original_messages
-            # print(chat_response.choices[0])
-            chat_response_text = chat_response.choices[0].message.content
+        if response_text:
+            logger.info('用户提问由知识库回答')
         else:
-            logger.debug('The question is handled by ES.')
-        print('整理前：' + chat_response_text)
+            # 问题不在知识库，判断是否政务相关问题
+            classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
+                                       "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
+                                       f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
+                                       "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
+                                       "譬如，问题:“你好”,回答:“否”; 问题：”如何申请驾照“，回答:“是”。")
+            classification_request = ChatCompletionRequest(model=CLASSIFICATION_MODEL,
+                                                           messages=classification_question,
+                                                           max_tokens=1024,
+                                                           temperature=0.1,
+                                                           top_p=0.1,
+                                                           n=1,
+                                                           stream=False)
+            classification_response = await create_chat_completion(classification_request)
+            if not isinstance(classification_response, ChatCompletionResponse):
+                # error
+                return classification_response
+            classification_response_text = classification_response.choices[0].message.content
+
+            if classification_response_text.strip().startswith('是'):
+                logger.info(f'用户提问属于政务问题。通过LLM处理, 选用模型为: {request.model}')
+                original_messages = request.messages
+                request.messages = user_question
+                chat_response = await create_chat_completion(request)
+                request.messages = original_messages
+                # print(chat_response.choices[0])
+                response_text = chat_response.choices[0].message.content
+            else:
+                logger.info(f'用户提问不属于政务问题。选用模型为: {QA_MODEL}')
+                # General questions. Leave it to chatglm.
+                request.model = QA_MODEL
+                request = inject_identity_prompt(request)
+                # remember to restore the original request
+                request.stream = request_stream
+                print(request.__dict__)
+                return await create_chat_completion(request)
+
+        # 整理答案
+        print('整理前：' + response_text)
 
         # 整理输出格式
         #p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。如果内容包含多个步骤，用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
         #     f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
         p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
              f"含有多个要点要点的部分需要以完整的列表展示，譬如输入为“你好。这是第一点。这是第二点。“, 输出为“你好！\n 1.第一点。\n 2.第二点。“。"
-             f"待整理的文本内容为：{chat_response_text}")
-        #messages = [{"role": "user", "content": p}]
+             f"待整理的文本内容为：{response_text}")
         format_request = ChatCompletionRequest(model=QA_MODEL,
                                                messages=p,
                                                max_tokens=1024,
@@ -186,15 +206,6 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         if not request_stream and isinstance(format_response, ChatCompletionResponse):
             print('整理后：' + format_response.choices[0].message.content)
         return format_response
-    else:
-        # General questions. Leave it to chatglm.
-        request.model = QA_MODEL
-        logger.info(f'用户提问不属于属于政务问题: {user_question}\n模型选用:{request.model}')
-        request = inject_identity_prompt(request)
-        # remember to restore the original request
-        request.stream = request_stream
-        print(request.__dict__)
-        return await create_chat_completion(request)
 
 
 if __name__ == "__main__":
