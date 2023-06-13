@@ -280,7 +280,7 @@ async def get_gen_params(
         # Add a blank message for the assistant.
         conv.append_message(conv.roles[1], None)
 
-        is_chatglm = "chatglm" in model_name.lower()
+        is_chatglm = "chatglm" in model_name.lower() or "llm01" in model_name.lower()
         if is_chatglm:
             prompt = conv.messages[conv.offset :]
         else:
