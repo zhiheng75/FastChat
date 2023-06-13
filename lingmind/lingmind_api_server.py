@@ -68,20 +68,20 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
         the model via fine-tuning.
     """
     print(request.messages)
-    user_question = get_last_question(request)
-    new_request = copy.deepcopy(request)
-    #identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
-    #                    {"role": "assistant", "content": "好的。"}]
-    identity_prompts = f'你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。现在回答用户提出的这个问题：{user_question}'
-    #if isinstance(request.messages, str):
-    #    request.messages = identity_prompts.append({"role": "user", "content": request.messages})
-    #else:
-    #    # list
-    #    identity_prompts.extend(request.messages)
-    #    request.messages = identity_prompts
-    new_request.messages = identity_prompts
-    print(new_request.messages)
-    return new_request
+    # user_question = get_last_question(request)
+    #new_request = copy.deepcopy(request)
+    identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
+                        {"role": "assistant", "content": "好的。"}]
+    #identity_prompts = f'你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。现在回答用户提出的这个问题：{user_question}'
+    if isinstance(request.messages, str):
+        request.messages = identity_prompts.append({"role": "user", "content": request.messages})
+    else:
+        # list
+        identity_prompts.extend(request.messages)
+        request.messages = identity_prompts
+    # new_request.messages = identity_prompts
+    print(request.messages)
+    return request
 
 
 async def search_knowledge(question: str) -> Union[str, None]:
@@ -110,11 +110,13 @@ async def search_knowledge(question: str) -> Union[str, None]:
         return None
 
 
+"""
 def prepare_request(request: ChatCompletionRequest) -> ChatCompletionRequest:
     new_request = copy.deepcopy(request)
     # 为了避开Fastchat内置的聊天历史机制，只保留最后一个用户问题。
     new_request.messages = get_last_question(request)
     return new_request
+"""
 
 
 @app.post("/demo/chat/completions")
@@ -144,8 +146,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
     global _use_auto_agent
     if not _use_auto_agent:
         # 不使用模型自动选择
-        new_request = prepare_request(request)
-        return await create_chat_completion(new_request)
+        return await create_chat_completion(request)
     else:
         # 模型自动选择
         user_question = get_last_question(request)
@@ -158,13 +159,6 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         else:
             logger.info('用户提问由LLM回答')
             # 问题不在知识库，判断是否政务相关问题
-            """
-            classification_question = ("你的任务是判断一个问题或者陈述是否与政府部门的业务内容，譬如工商、行政、车辆政策等问题都属于政府业务。"
-                                       "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务无关。"
-                                       f"现在用户提出的问题是:“{user_question}”，你需要判定这个问题是否属于政府业务内容, "
-                                       "你的回答只能从”是“/”否“里面选择一个最可能的作为你的答案，不需要后续分析描述。"
-                                       "譬如，问题:“你好!”,回答:“否”; 问题：”如何申请驾照？“，回答:“是”。")
-            """
             classification_question = ("与工商、行政、车辆政策等有关的内容问题属于政府业务范围。"
                                        "相反，日常问候语、礼貌用语、天气和自然现象等内容则与政府业务范围无关。"
                                        "例如，当问题是:“你好”,你应该回答:“否”; 当问题是：”如何申请驾照？“，你应该回答:“是”。"
@@ -185,10 +179,10 @@ async def demo_chat_completions(request: ChatCompletionRequest):
             logger.debug(f'判断返回: {classification_response_text}')
             if classification_response_text.strip().strip("“").startswith('是'):
                 logger.info(f'用户提问属于政务问题。通过LLM处理, 选用模型为: {request.model}')
-                original_messages = request.messages
-                request.messages = user_question
+                # original_messages = request.messages
+                # request.messages = user_question
                 chat_response = await create_chat_completion(request)
-                request.messages = original_messages
+                # request.messages = original_messages
                 if not isinstance(chat_response, ChatCompletionResponse):
                     # error
                     return chat_response
@@ -207,13 +201,11 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         print('整理前：' + response_text)
 
         # 整理输出格式
-        #p = (f"你的任务是整理以下文本的格式然后输出，输出内容必须为中文。如果内容包含多个步骤，用列表作为输出格式。只需输出改写后的正文，不能包含回答提示信息。"
-        #     f"譬如输入为'你好, 第一点是一， 第二点是二。', 输出为'你好！\n1.一。\n2.二。'。 待整理的文本内容为：{chat_response_text}")
         p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
              f"含有多个要点要点的部分需要以完整的列表展示，譬如输入为“你好。这是第一点。这是第二点。“, 输出为“你好！\n 1.第一点。\n 2.第二点。“。"
              f"待整理的文本内容为：{response_text}")
         format_request = ChatCompletionRequest(model=QA_MODEL,
-                                               messages=p,
+                                               messages=[{"role": "user", "content": p}],
                                                max_tokens=1024,
                                                temperature=0,
                                                top_p=0.1,
