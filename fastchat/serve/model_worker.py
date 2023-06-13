@@ -107,7 +107,7 @@ class ModelWorker:
             self.context_len = 2048
 
         # generate_stream
-        is_chatglm = "chatglm" in str(type(self.model)).lower()
+        is_chatglm = "chatglm" in str(type(self.model)).lower() or "llm01" in str(type(self.model)).lower()
         if is_chatglm:
             self.generate_stream_func = chatglm_generate_stream
         else:
