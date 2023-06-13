@@ -34,6 +34,13 @@ logger.setLevel(logging.DEBUG)
 app = fastapi.FastAPI()
 headers = {"User-Agent": "LingMind API Server"}
 
+
+class AppSettings(BaseSettings):
+    # The address of the model controller.
+    controller_address: str = "http://localhost:21001"
+
+
+app_settings = AppSettings()
 _use_auto_agent = False
 
 
@@ -237,6 +244,9 @@ if __name__ == "__main__":
         "--allowed-methods", type=json.loads, default=["*"], help="allowed methods"
     )
     parser.add_argument(
+        "--controller-address", type=str, default="http://localhost:21001"
+    )
+    parser.add_argument(
         "--allowed-headers", type=json.loads, default=["*"], help="allowed headers"
     )
     args = parser.parse_args()
@@ -249,6 +259,7 @@ if __name__ == "__main__":
         allow_headers=args.allowed_headers,
     )
     _use_auto_agent = args.use_auto_agent
+    app_settings.controller_address = args.controller_address
 
     logger.info(f"args: {args}")
 
