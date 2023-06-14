@@ -17,3 +17,8 @@ shortuuid
 tiktoken
 openai
 black[jupyter]
+numpy
+tqdm
+torch
+requests
+pydantic

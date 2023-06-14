@@ -7,7 +7,6 @@ import argparse
 import json
 import requests
 import logging
-import copy
 from typing import Union
 
 import fastapi
@@ -17,13 +16,11 @@ from fastchat.constants import ErrorCode
 from fastapi.exceptions import RequestValidationError
 from fastchat.serve.openai_api_server import (
     create_chat_completion,
-    create_completion,
     create_error_response,
 )
 from fastchat.protocol.openai_api_protocol import (
     ChatCompletionRequest,
     ChatCompletionResponse,
-    CompletionRequest,
 )
 from fastchat.utils import build_logger
 from pydantic import BaseSettings, BaseModel
@@ -67,20 +64,14 @@ def inject_identity_prompt(request: ChatCompletionRequest) -> ChatCompletionRequ
         Insert identity prompt data into a chat request. This is a temporary fix before we build this data into
         the model via fine-tuning.
     """
-    print(request.messages)
-    # user_question = get_last_question(request)
-    #new_request = copy.deepcopy(request)
     identity_prompts = [{"role": "user", "content": "你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。"},
                         {"role": "assistant", "content": "好的。"}]
-    #identity_prompts = f'你叫“小灵”，是一个由灵迈智能创建的AI智能助手，为用户回答任何关于政策、法规、服务、资源等方面的问题。现在回答用户提出的这个问题：{user_question}'
     if isinstance(request.messages, str):
         request.messages = identity_prompts.append({"role": "user", "content": request.messages})
     else:
         # list
         identity_prompts.extend(request.messages)
         request.messages = identity_prompts
-    # new_request.messages = identity_prompts
-    print(request.messages)
     return request
 
 
@@ -110,15 +101,6 @@ async def search_knowledge(question: str) -> Union[str, None]:
         return None
 
 
-"""
-def prepare_request(request: ChatCompletionRequest) -> ChatCompletionRequest:
-    new_request = copy.deepcopy(request)
-    # 为了避开Fastchat内置的聊天历史机制，只保留最后一个用户问题。
-    new_request.messages = get_last_question(request)
-    return new_request
-"""
-
-
 @app.post("/demo/chat/completions")
 async def demo_chat_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
@@ -129,7 +111,6 @@ async def demo_chat_completions(request: ChatCompletionRequest):
           - 政务问题是否需要对历史进行裁剪
           - 只支持 n=1
     """
-    GOV_QA_MODEL = 'llm01-6b-gov'  # chatglm-6b-zhongke
     CLASSIFICATION_MODEL = 'llm02-13b-gov'  # belle-13b-zhongke
     QA_MODEL = 'llm01-6b'  # chatglm-6b
 
@@ -179,10 +160,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
             logger.debug(f'判断返回: {classification_response_text}')
             if classification_response_text.strip().strip("“").startswith('是'):
                 logger.info(f'用户提问属于政务问题。通过LLM处理, 选用模型为: {request.model}')
-                # original_messages = request.messages
-                # request.messages = user_question
                 chat_response = await create_chat_completion(request)
-                # request.messages = original_messages
                 if not isinstance(chat_response, ChatCompletionResponse):
                     # error
                     return chat_response
@@ -194,7 +172,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
                 request = inject_identity_prompt(request)
                 # remember to restore the original request
                 request.stream = request_stream
-                print(request.__dict__)
+                logger.debug(request.__dict__)
                 return await create_chat_completion(request)
 
         # 整理答案
