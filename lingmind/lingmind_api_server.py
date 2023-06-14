@@ -106,7 +106,7 @@ async def search_knowledge(question: str) -> Union[str, None]:
             return None
         return results['answer']
     except Exception as e:
-        logger.error('Failure querying ES: ' + e.__dict__)
+        logger.error('Failure querying ES: ' + json.dumps(e.__dict__))
         return None
 
 
