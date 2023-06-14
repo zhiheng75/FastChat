@@ -76,7 +76,7 @@ function start_server {
   # Gov chatglm model
   worker_name0="llm01-6b-gov"
   echo "Starting worker ${worker_name0}..."
-  CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name0}" \
 	  --model-path /home/zhihengw/model/chatglm-6b-zhongke-ft \
 	  --port ${worker_port0} \
@@ -88,7 +88,7 @@ function start_server {
   # native Chatglm model
   worker_name1="llm01-6b"
   echo "Starting worker ${worker_name1}..."
-  CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name1}" \
 	  --model-path /home/zhihengw/model/chatglm-6b \
 	  --port $worker_port1 \
@@ -100,7 +100,7 @@ function start_server {
   # BELLE
   worker_name2="llm02-13b-gov"
   echo "Starting worker ${worker_name2}..."
-  CUDA_VISIBLE_DEVICES=7 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/zhihengw/model/BELLE-LLaMA-EXT-13B-zhongke-lora \
 	  --port ${worker_port2} \
