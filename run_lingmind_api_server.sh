@@ -1,46 +1,148 @@
 #!/usr/bin/bash
 
-# Start the controller
-echo "Starting controller..."
-nohup python3 -m fastchat.serve.controller >nohup.controller 2>&1 &
-sleep 5 
+LOG_DIR="logs"
+mkdir -p ${LOG_DIR}
 
-# Zhongke chatglm model
-echo "Starting worker LLM01-6B-gov..."
-nohup CUDA_VISIBLE_DEVICES=0 python3 -m fastchat.serve.model_worker \
-	--model-name 'llm01-6b-gov' \
-	--model-path /home/zhihengw/model/chatglm-6b-zhongke-ft
-	--port 21002 \
-	--worker-address http://localhost:21002 >nohup.llm01-6b-gov 2>&1 &
-echo "$!" > llm01-6b-gov.pid
-sleep 1
+# Read input parameters.
+# mode = [dev|staging],
+# command=[start|stop|restart]
+if [ $# -le 1 ]; then
+    echo "No enough arguments provided. Usage: $0 [dev|staging] [start|stop|restart]"
+    exit 1
+fi
 
-# native Chatglm model
-echo "Starting worker LLM01-6B..."
-nohup CUDA_VISIBLE_DEVICES=0 python3 -m fastchat.serve.model_worker \
-	--model-name 'llm01-6b' \
-	--model-path /home/zhihengw/model/chatglm-6b \
-	--port 21003 \
-	--worker-address http://localhost:21003 >nohup.llm01-6b 2>&1 &
-echo "$!" > llm01-6b.pid
-sleep 1
+mode=$1
+if [ "$mode" != "dev" ] && [ "$mode" != "staging" ]; then
+    echo "Invalid mode. Usage: $0 [dev|staging] [start|stop|restart]"
+    exit 1
+fi
 
-# BELLE
-echo "Starting worker LLM02-13B-gov..."
-nohup CUDA_VISIBLE_DEVICES=1 python3 -m fastchat.serve.model_worker \
-	--model-name 'llm02-13b-gov' \
-	--model-path /home/zhihengw/model/BELLE-LLaMA-EXT-13B-zhongke-lora \
-	--port 21004 \
-	--worker-address http://localhost:21004 >nohup.llm02-13b-gov 2>&1 &
-echo "$!" > llm02-12-gov.pid
-sleep 1
+command=$2
+if [ "$command" != "start" ] && [ "$command" != "stop" ] && [ "$command" != "restart" ]; then
+    echo "Invalid command. Usage: $0 [dev|staging] [start|stop|restart]"
+    exit 1
+fi
+
+# As we are running on the same machine, we need to specify different ports for different modes.
+case "$mode" in
+    "dev")
+        echo "Running in dev mode..."
+        GPU0=6
+        GPU1=7
+        controller_port=22001
+        worker_port0=22002
+        worker_port1=22003
+        worker_port2=22004
+        openai_api_server_port=9318
+        lingmind_api_server_port=9317
+        ;;
+    "staging")
+        echo "Running in staging mode..."
+        GPU0=0
+        GPU1=1
+        controller_port=21001
+        worker_port0=21002
+        worker_port1=21003
+        worker_port2=21004
+        openai_api_server_port=9308
+        lingmind_api_server_port=9307
+        ;;
+esac
 
 
-# API server
-nohup python3 -m fastchat.serve.openai_api_server --host 192.168.0.20 --port 9308 >nohup.openai_api_server 2>&1 &
-echo "$!" > openai_api.pid
-sleep 1
+function stop_server {
+  # Read PIDs from all the .pid files in the logging directory and kill the processes
+  for pid_file in ${LOG_DIR}/*.pid; do
+    if [ -f "$pid_file" ]; then
+      pid=$(cat "$pid_file")
+      echo "Killing process $pid (from $pid_file)..."
+      kill -9 "$pid"
+      rm "$pid_file"
+    fi
+  done
+}
 
-# LingMind server
-nohup python3 -m lingmind.lingmind_api_server --port=9307 --host=192.168.0.20 --use-auto-agent >nohup.lingmind_api_server 2>&1 &
-echo "$!" > lingmind_api.pid
+# define a function to start all processes
+function start_server {
+  local_ip_address="192.168.0.20"
+
+  controller_port=22001
+  # Start the controller
+  echo "Starting controller..."
+  nohup python3 -m fastchat.serve.controller --port ${controller_port} >${LOG_DIR}/controller.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/controller.pid
+  sleep 5
+
+  # Gov chatglm model
+  worker_name0="llm01-6b-gov"
+  worker_port0=22002
+  echo "Starting worker ${worker_name0}..."
+  CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
+	  --model-name "${worker_name0}" \
+	  --model-path /home/zhihengw/model/chatglm-6b-zhongke-ft \
+	  --port ${worker_port0} \
+	  --controller-address http://localhost:${controller_port} \
+	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
+  sleep 1
+
+  # native Chatglm model
+  worker_name1="llm01-6b"
+  worker_port1=22003
+  echo "Starting worker ${worker_name1}..."
+  CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
+	  --model-name "${worker_name1}" \
+	  --model-path /home/zhihengw/model/chatglm-6b \
+	  --port $worker_port1 \
+	  --controller-address http://localhost:${controller_port} \
+	  --worker-address http://localhost:{worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
+  sleep 1
+
+  # BELLE
+  worker_name2="llm02-13b-gov"
+  worker_port2=22004
+  echo "Starting worker ${worker_name2}..."
+  CUDA_VISIBLE_DEVICES=7 nohup python3 -m fastchat.serve.model_worker \
+	  --model-name "${worker_name2}" \
+	  --model-path /home/zhihengw/model/BELLE-LLaMA-EXT-13B-zhongke-lora \
+	  --port ${worker_port2} \
+	  --controller-address http://localhost:${controller_port} \
+	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
+  sleep 1
+
+  # API server
+  openai_api_server_port=9318
+  nohup python3 -m fastchat.serve.openai_api_server --host ${local_ip_address} \
+        	                                          --controller-address http://localhost:${controller_port} \
+                                                    --port ${openai_api_server_port} >${LOG_DIR}/nohup.openai_api_server 2>&1 &
+  echo "$!" > ${LOG_DIR}/openai_api.pid
+  sleep 1
+
+  # LingMind server
+  lingmind_api_server_port=9317
+  nohup python3 -m lingmind.lingmind_api_server --port ${lingmind_api_server_port} \
+                                                --host ${local_ip_address} \
+        	                                      --controller-address http://localhost:${controller_port} \
+                                                --use-auto-agent >${LOG_DIR}/nohup.lingmind_api_server 2>&1 &
+  echo "$!" > ${LOG_DIR}/lingmind_api.pid
+}
+
+
+case "$command" in
+    "start")
+        echo "Starting all processes..."
+        start_server
+        ;;
+    "stop")
+        echo "Stopping all processes..."
+        stop_server
+        ;;
+    "restart")
+        echo "Restarting all processes..."
+        stop_server
+        sleep 5
+        start_server
+        ;;
+esac

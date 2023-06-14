@@ -49,26 +49,8 @@ case "$mode" in
         ;;
 esac
 
-case "$command" in
-    "start")
-        echo "Starting all processes..."
-        start_server
-        ;;
-    "stop")
-        echo "Stopping all processes..."
-        stop_server
-        ;;
-    "restart")
-        echo "Restarting all processes..."
-        stop_server
-        sleep 5
-        start_server
-        ;;
-esac
 
-
-stop_server()
-{
+function stop_server {
   # Read PIDs from all the .pid files in the logging directory and kill the processes
   for pid_file in ${LOG_DIR}/*.pid; do
     if [ -f "$pid_file" ]; then
@@ -81,8 +63,7 @@ stop_server()
 }
 
 # define a function to start all processes
-start_server()
-{
+function start_server {
   local_ip_address="192.168.0.20"
 
   controller_port=22001
@@ -147,3 +128,21 @@ start_server()
                                                 --use-auto-agent >${LOG_DIR}/nohup.lingmind_api_server 2>&1 &
   echo "$!" > ${LOG_DIR}/lingmind_api.pid
 }
+
+
+case "$command" in
+    "start")
+        echo "Starting all processes..."
+        start_server
+        ;;
+    "stop")
+        echo "Stopping all processes..."
+        stop_server
+        ;;
+    "restart")
+        echo "Restarting all processes..."
+        stop_server
+        sleep 5
+        start_server
+        ;;
+esac
