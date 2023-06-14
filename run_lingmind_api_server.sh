@@ -75,7 +75,6 @@ function start_server {
 
   # Gov chatglm model
   worker_name0="llm01-6b-gov"
-  worker_port0=22002
   echo "Starting worker ${worker_name0}..."
   CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name0}" \
@@ -88,7 +87,6 @@ function start_server {
 
   # native Chatglm model
   worker_name1="llm01-6b"
-  worker_port1=22003
   echo "Starting worker ${worker_name1}..."
   CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name1}" \
@@ -101,7 +99,6 @@ function start_server {
 
   # BELLE
   worker_name2="llm02-13b-gov"
-  worker_port2=22004
   echo "Starting worker ${worker_name2}..."
   CUDA_VISIBLE_DEVICES=7 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name2}" \
@@ -113,7 +110,6 @@ function start_server {
   sleep 1
 
   # API server
-  openai_api_server_port=9318
   nohup python3 -m fastchat.serve.openai_api_server --host ${local_ip_address} \
         	                                    --controller-address ${controller_address} \
                                                     --port ${openai_api_server_port} >${LOG_DIR}/nohup.openai_api_server 2>&1 &
@@ -121,7 +117,6 @@ function start_server {
   sleep 1
 
   # LingMind server
-  lingmind_api_server_port=9317
   nohup python3 -m lingmind.lingmind_api_server --port ${lingmind_api_server_port} \
                                                 --host ${local_ip_address} \
         	                                --controller-address ${controller_address} \
