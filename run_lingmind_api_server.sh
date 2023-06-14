@@ -66,7 +66,7 @@ function stop_server {
 function start_server {
   local_ip_address="192.168.0.20"
 
-  controller_port=22001
+  controller_address="http://localhost:${controller_port}"
   # Start the controller
   echo "Starting controller..."
   nohup python3 -m fastchat.serve.controller --port ${controller_port} >${LOG_DIR}/controller.nohup 2>&1 &
@@ -81,7 +81,7 @@ function start_server {
 	  --model-name "${worker_name0}" \
 	  --model-path /home/zhihengw/model/chatglm-6b-zhongke-ft \
 	  --port ${worker_port0} \
-	  --controller-address http://localhost:${controller_port} \
+	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
   echo "$!" > ${LOG_DIR}/${worker_name0}.pid
   sleep 1
@@ -94,8 +94,8 @@ function start_server {
 	  --model-name "${worker_name1}" \
 	  --model-path /home/zhihengw/model/chatglm-6b \
 	  --port $worker_port1 \
-	  --controller-address http://localhost:${controller_port} \
-	  --worker-address http://localhost:{worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
   echo "$!" > ${LOG_DIR}/${worker_name1}.pid
   sleep 1
 
@@ -107,7 +107,7 @@ function start_server {
 	  --model-name "${worker_name2}" \
 	  --model-path /home/zhihengw/model/BELLE-LLaMA-EXT-13B-zhongke-lora \
 	  --port ${worker_port2} \
-	  --controller-address http://localhost:${controller_port} \
+	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
   echo "$!" > ${LOG_DIR}/${worker_name2}.pid
   sleep 1
@@ -115,7 +115,7 @@ function start_server {
   # API server
   openai_api_server_port=9318
   nohup python3 -m fastchat.serve.openai_api_server --host ${local_ip_address} \
-        	                                          --controller-address http://localhost:${controller_port} \
+        	                                    --controller-address ${controller_address} \
                                                     --port ${openai_api_server_port} >${LOG_DIR}/nohup.openai_api_server 2>&1 &
   echo "$!" > ${LOG_DIR}/openai_api.pid
   sleep 1
@@ -124,7 +124,7 @@ function start_server {
   lingmind_api_server_port=9317
   nohup python3 -m lingmind.lingmind_api_server --port ${lingmind_api_server_port} \
                                                 --host ${local_ip_address} \
-        	                                      --controller-address http://localhost:${controller_port} \
+        	                                --controller-address ${controller_address} \
                                                 --use-auto-agent >${LOG_DIR}/nohup.lingmind_api_server 2>&1 &
   echo "$!" > ${LOG_DIR}/lingmind_api.pid
 }
