@@ -101,6 +101,44 @@ async def search_knowledge(question: str) -> Union[str, None]:
         return None
 
 
+async def summarize_chat_question(request: ChatCompletionRequest) -> str:
+    """
+        Summarize the user question history into a single question.
+    """
+    _ctemplate = """鉴于以下对话和后续问题，将后续问题改写为独立问题。
+    
+    对话历史:
+    {chat_history}
+    后续问题: {question}
+    独立问题:"""
+    follow_up_question = get_last_question(request)
+    if not follow_up_question:
+        return None
+    summarization_prompt = _ctemplate.format(chat_history='\n'.join([f"{m['role']}: {m['content']}" for m in request.messages[:-1]]),
+                                             question=follow_up_question)
+    summarization_request = ChatCompletionRequest(model="belle-13b-zhongke",
+                                                  messages=summarization_prompt,
+                                                  max_tokens=1024,
+                                                  temperature=0,
+                                                  top_p=0.1,
+                                                  n=1,
+                                                  stream=False)
+    summarization_response = await create_chat_completion(summarization_request)
+    if not isinstance(summarization_response, ChatCompletionResponse):
+        # error
+        return summarization_response
+    stand_alone_question = summarization_response.choices[0].message.content
+    return stand_alone_question
+
+    # _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+    #
+    # Chat History:
+    # {chat_history}
+    # Follow Up Input: {question}
+    # Standalone question:"""
+    # CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
+
+
 @app.post("/demo/chat/completions")
 async def demo_chat_completions(request: ChatCompletionRequest):
     """ 政务问答生成。主要包含以下步骤：
