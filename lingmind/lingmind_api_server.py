@@ -230,7 +230,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
                                                stream=request_stream)
         format_response = await create_chat_completion(format_request)
         if not request_stream and isinstance(format_response, ChatCompletionResponse):
-            print('整理后：' + format_response.choices[0].message.content)
+            print('整理后：' + format_response.choices[0].message.content.strip('“'))
         return format_response
 
 
