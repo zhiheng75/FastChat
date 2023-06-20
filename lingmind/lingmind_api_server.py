@@ -126,7 +126,8 @@ async def summarize_chat_question(request: ChatCompletionRequest) -> str:
     summarization_response = await create_chat_completion(summarization_request)
     if not isinstance(summarization_response, ChatCompletionResponse):
         # error
-        return summarization_response
+        logger.error('Error summarizing:' + json.dumps(summarization_response.__dict__))
+        return None
     stand_alone_question = summarization_response.choices[0].message.content
     return stand_alone_question
 
@@ -170,7 +171,10 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         # 模型自动选择
         # condense the user question into a stand-alone question.
         user_question = await summarize_chat_question(request)
-        # user_question = get_last_question(request)
+        # If we can not summarize the history, fall back to the last question.
+        if not user_question:
+            logger.debug('Fallback to last question instead.')
+            user_question = get_last_question(request)
         logger.info(f'用户提问: {user_question}')
         # 查询ES看是否命中知识库
         response_text = await search_knowledge(user_question)
