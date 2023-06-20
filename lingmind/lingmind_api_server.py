@@ -24,6 +24,7 @@ from fastchat.protocol.openai_api_protocol import (
 )
 from fastchat.utils import build_logger
 from pydantic import BaseSettings, BaseModel
+from lingmind.esearch import QaDb
 
 
 logger = build_logger('lingmind_api_server', 'lingmind_api_server.log')
@@ -37,6 +38,7 @@ class AppSettings(BaseSettings):
     controller_address: str = "http://localhost:21001"
 
 
+qadb = QaDb()
 app_settings = AppSettings()
 _use_auto_agent = False
 
@@ -80,22 +82,23 @@ async def search_knowledge(question: str) -> Union[str, None]:
        Search ES for the given question and return the answer if it hits with high confidence.
        Currently, the confidence threshold is set to 25.
     """
-    es_api_url = 'http://gpu.qrgraph.com:9306/search'
-    es_query_threshold = 25
-    payload = dict(question=question)
+    # es_api_url = 'http://gpu.qrgraph.com:9306/search'
+    # payload = dict(question=question)
     logger.debug(f'Question for ES: {question}')
+    es_query_threshold = 25
     try:
-        r = requests.post(es_api_url, data=payload)
-        print(r.text)
-        results = json.loads(r.text)
-        if not results:
+        result = qadb.find_nearest_question(question)
+        # r = requests.post(es_api_url, data=payload)
+        # print(r.text)
+        # results = json.loads(r.text)
+        if not result:
             return None
-        if 'score' not in results or 'answer' not in results:
+        if 'score' not in result or 'answer' not in result:
             return None
-        logger.debug(f"ES score: {results['score']}")
-        if results['score'] < es_query_threshold:
+        logger.debug(f"ES score: {result['score']}")
+        if result['score'] < es_query_threshold:
             return None
-        return results['answer']
+        return result['answer']
     except Exception as e:
         logger.error('Failure querying ES: ' + json.dumps(e.__dict__))
         return None
