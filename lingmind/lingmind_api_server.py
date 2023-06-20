@@ -152,7 +152,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
     CLASSIFICATION_MODEL = 'llm02-13b-gov'  # belle-13b-zhongke
     QA_MODEL = 'llm01-6b'  # chatglm-6b
 
-    print(request)
+    logger.debug('用户请求:' + json.dumps(request.__dict__))
 
     # original settings
     request_stream = request.stream
@@ -168,7 +168,9 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         return await create_chat_completion(request)
     else:
         # 模型自动选择
-        user_question = get_last_question(request)
+        # condense the user question into a stand-alone question.
+        user_question = summarize_chat_question(request)
+        # user_question = get_last_question(request)
         logger.info(f'用户提问: {user_question}')
         # 查询ES看是否命中知识库
         response_text = await search_knowledge(user_question)
