@@ -169,7 +169,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
     else:
         # 模型自动选择
         # condense the user question into a stand-alone question.
-        user_question = summarize_chat_question(request)
+        user_question = await summarize_chat_question(request)
         # user_question = get_last_question(request)
         logger.info(f'用户提问: {user_question}')
         # 查询ES看是否命中知识库
