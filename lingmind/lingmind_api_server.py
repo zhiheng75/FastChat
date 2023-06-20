@@ -220,7 +220,6 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
              f"含有多个要点要点的部分需要以完整的列表展示，"
              f"\n\n待整理的文本为：“你好。这是第一点。这是第二点。“, 润饰后的文本为：“你好！\n 1.第一点。\n 2.第二点。“"
-             f"\n\n待整理的文本为：“五道口被称为宇宙中心“, 润饰后的文本为：“五道口被称为宇宙中心。“"
              f"\n\n待整理的文本内容为：“{response_text}”，润饰后的文本为：")
         format_request = ChatCompletionRequest(model=QA_MODEL,
                                                messages=[{"role": "user", "content": p}],
