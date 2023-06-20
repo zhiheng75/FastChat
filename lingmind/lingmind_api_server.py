@@ -116,7 +116,7 @@ async def summarize_chat_question(request: ChatCompletionRequest) -> str:
         return None
     summarization_prompt = _ctemplate.format(chat_history='\n'.join([f"{m['role']}: {m['content']}" for m in request.messages[:-1]]),
                                              question=follow_up_question)
-    summarization_request = ChatCompletionRequest(model="belle-13b-zhongke",
+    summarization_request = ChatCompletionRequest(model="llm01-6b",
                                                   messages=summarization_prompt,
                                                   max_tokens=1024,
                                                   temperature=0,
@@ -126,7 +126,7 @@ async def summarize_chat_question(request: ChatCompletionRequest) -> str:
     summarization_response = await create_chat_completion(summarization_request)
     if not isinstance(summarization_response, ChatCompletionResponse):
         # error
-        logger.error('Error summarizing:' + json.dumps(summarization_response.__dict__))
+        logger.error('Error summarizing:')
         return None
     stand_alone_question = summarization_response.choices[0].message.content
     return stand_alone_question
