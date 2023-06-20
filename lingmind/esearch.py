@@ -19,7 +19,7 @@ class QaDb:
                             "question": {"query": question}
                         }},
                         {"match": {
-                            "answer": {"query": question, "boost": 0.1}
+                            "answer": {"query": question, "boost": 0.2}
                         }},
                         {"match": {
                             "county": {"query": question, "boost": 3}
