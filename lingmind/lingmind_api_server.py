@@ -82,15 +82,10 @@ async def search_knowledge(question: str) -> Union[str, None]:
        Search ES for the given question and return the answer if it hits with high confidence.
        Currently, the confidence threshold is set to 25.
     """
-    # es_api_url = 'http://gpu.qrgraph.com:9306/search'
-    # payload = dict(question=question)
     logger.debug(f'Question for ES: {question}')
     es_query_threshold = 25
     try:
         result = qadb.find_nearest_question(question)
-        # r = requests.post(es_api_url, data=payload)
-        # print(r.text)
-        # results = json.loads(r.text)
         if not result:
             return None
         if 'score' not in result or 'answer' not in result:
@@ -133,14 +128,6 @@ async def summarize_chat_question(request: ChatCompletionRequest) -> str:
         return None
     stand_alone_question = summarization_response.choices[0].message.content
     return stand_alone_question
-
-    # _template = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
-    #
-    # Chat History:
-    # {chat_history}
-    # Follow Up Input: {question}
-    # Standalone question:"""
-    # CONDENSE_QUESTION_PROMPT = PromptTemplate.from_template(_template)
 
 
 @app.post("/demo/chat/completions")
@@ -226,14 +213,17 @@ async def demo_chat_completions(request: ChatCompletionRequest):
         print('整理前：' + response_text)
 
         # 整理输出格式
-        p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
-             f"含有多个要点要点的部分需要以完整的列表展示，"
-             f"\n\n待整理的文本为：“你好。这是第一点。这是第二点。“, 润饰后的文本为：“你好！\n 1.第一点。\n 2.第二点。“"
-             f"\n\n待整理的文本内容为：“{response_text}”，润饰后的文本为：")
+        # p = (f"你的任务是对以下文本的格式进行润饰，除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
+        #      f"含有多个要点要点的部分需要以完整的列表展示，"
+        #      f"\n\n待整理的文本为：“你好。这是第一点。这是第二点。“, 润饰后的文本为：“你好！\n 1.第一点。\n 2.第二点。“"
+        #      f"\n\n待整理的文本内容为：“{response_text}”，润饰后的文本为：")
+        p = (f"你的任务是对文本格式进行润饰。除必要的格式文本外不能添加额外的内容。只需输出润饰后的正文，不能包含回答提示信息。"
+             f"含有多个要点要点的部分需要以完整的列表展示。\n\n"
+             f"现在请整理以下文本内容为：“{response_text}”，润饰后的文本为：")
         format_request = ChatCompletionRequest(model=QA_MODEL,
                                                messages=[{"role": "user", "content": p}],
                                                max_tokens=1024,
-                                               temperature=0,
+                                               temperature=0.1,
                                                top_p=0.1,
                                                n=1,
                                                stream=request_stream)
