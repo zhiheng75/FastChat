@@ -85,7 +85,7 @@ async def search_knowledge(question: str) -> Union[str, None]:
     # es_api_url = 'http://gpu.qrgraph.com:9306/search'
     # payload = dict(question=question)
     logger.debug(f'Question for ES: {question}')
-    es_query_threshold = 21
+    es_query_threshold = 25
     try:
         result = qadb.find_nearest_question(question)
         # r = requests.post(es_api_url, data=payload)
