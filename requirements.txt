@@ -25,3 +25,4 @@ pydantic
 elasticsearch
 chromadb
 sentence_transformers
+pdfminer.six
