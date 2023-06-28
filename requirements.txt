@@ -23,3 +23,5 @@ torch
 requests
 pydantic
 elasticsearch
+chromadb
+sentence_transformers
