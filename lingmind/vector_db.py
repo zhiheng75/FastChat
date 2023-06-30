@@ -3,6 +3,7 @@ import logging
 import json
 import os
 import uuid
+import hashlib
 from pdfminer.high_level import extract_text
 from chromadb.config import Settings
 from chromadb.utils import embedding_functions
@@ -72,7 +73,9 @@ def load_qa_into_vectordb(collection_name, file_path: str) -> int:
 
         Meta data contains:
         - content_type = <question/answer/question+answer>
-        - original_content = <original JSON content>
+        - content = <original JSON content>
+
+        Content's MD5 hash is used as doc ID
     """
     global _persist_directory, _embedding_fn
     chromadb_client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet",
@@ -82,43 +85,41 @@ def load_qa_into_vectordb(collection_name, file_path: str) -> int:
     # collection = chromadb_client.get_or_create_collection(collection_name, embedding_function=_embedding_fn)
     collection = chromadb_client.create_collection(collection_name, embedding_function=_embedding_fn)
 
-    rid = 0
+    count = 0
     with open(file_path, 'r') as f:
         for line in f:
-            print(rid)
+            print(count)
             documents = []
             metadatas = []
             ids = []
 
             record = json.loads(line)
             documents.append(record['answer'])
-            metadatas.append({"content_type": "answer", "original_content": json.dumps(record)})
-            ids.append(str(rid))
-            rid += 1
+            metadatas.append({"content_type": "answer", "content": json.dumps(record)})
+            ids.append(hashlib.md5(record['answer'].encode('utf-8')).hexdigest())
 
             documents.append(record['question'])
-            metadatas.append({"content_type": "question", "original_content": json.dumps(record)})
-            ids.append(str(rid))
-            rid += 1
+            metadatas.append({"content_type": "question", "content": json.dumps(record)})
+            ids.append(hashlib.md5(record['question'].encode('utf-8')).hexdigest())
 
-            documents.append(record['question'] + '\n\n' + record['answer'])
-            metadatas.append({"content_type": "question+answer", "original_content": json.dumps(record)})
-            ids.append(str(rid))
-            rid += 1
+            content = record['question'] + '\n\n' + record['answer']
+            documents.append(content)
+            metadatas.append({"content_type": "question+answer", "content": json.dumps(record)})
+            ids.append(hashlib.md5(content.encode('utf-8')).hexdigest())
 
             collection.add(documents=documents, metadatas=metadatas, ids=ids)
-
-            if rid % 3000 == 0:
+            count += 1
+            if count % 1000 == 0:
                 chromadb_client.persist()
-                logger.info(f'Loaded {rid} records into VectorDB.')
+                logger.info(f'Loaded {count} QAs into VectorDB.')
                 logger.info(f'Total number of embeddings in the DB: {collection.count()}')
 
-    logger.info(f'Loaded {rid} records into VectorDB.')
+    logger.info(f'Loaded {count} QAs into VectorDB.')
     logger.info(f'Total number of embeddings in the DB: {collection.count()}')
-    return rid
+    return count
 
 
-def load_documents_into_vector_db(vdb, in_dir: str) -> bool:
+def load_documents_into_vector_db(collection_name, in_dir: str) -> bool:
     """
         Load all documents in a directory into VectorDB. Only the following types of files are processed:
         - .txt
@@ -131,8 +132,15 @@ def load_documents_into_vector_db(vdb, in_dir: str) -> bool:
         - content_type: <txt/pdf>
         - source_file_name: source file name
     """
-    _slice_size = 400
-    _overlap = 40
+    global _persist_directory, _embedding_fn
+    chromadb_client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet",
+                                               persist_directory=_persist_directory))
+    chromadb_client.delete_collection(collection_name)
+    print(chromadb_client.list_collections())
+    collection = chromadb_client.create_collection(collection_name, embedding_function=_embedding_fn)
+
+    slice_size = 400
+    overlap = 40
     for file in os.listdir(in_dir):
         if file.endswith('.txt'):
             with open(os.path.join(in_dir, file), 'r') as f:
@@ -150,9 +158,9 @@ def load_documents_into_vector_db(vdb, in_dir: str) -> bool:
         # trunk the document
         text_len = len(text)
         texts = []
-        while text_len > _slice_size:
-            texts.append(text[:_slice_size])
-            text = text[_slice_size - _overlap:]
+        while text_len > slice_size:
+            texts.append(text[:slice_size])
+            text = text[slice_size - overlap:]
             text_len = len(text)
         if text_len > 0:
             texts.append(text)
@@ -161,7 +169,7 @@ def load_documents_into_vector_db(vdb, in_dir: str) -> bool:
         for trunk in texts:
             # create a UUID as the document id
             doc_id = uuid.uuid4().hex
-            vdb.add_doc([trunk], [meta], [doc_id])
+            collection.add([trunk], [meta], [doc_id])
     return True
 
 
