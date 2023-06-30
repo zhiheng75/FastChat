@@ -13,6 +13,9 @@ logger = build_logger('VectorDB', 'vector_db.log')
 logger.setLevel(logging.DEBUG)
 
 
+_embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+_persist_directory = '.chromadb'
+
 class VectorDB:
     def __init__(self, collection: str):
         # get current module path
@@ -32,6 +35,7 @@ class VectorDB:
         """
             Add a document to the Vector database using slicing.
         """
+        assert(len(doc) == len(meta) == len(doc_id))
         try:
             self.collection.add(documents=doc, metadatas=meta, ids=doc_id)
             return True
@@ -44,14 +48,20 @@ class VectorDB:
             Query the Vector database.
         """
         try:
-            results = self.collection.query(query_texts=query, **kwargs)
+            results = self.collection.query(query_texts=[query], **kwargs)
             return results
         except Exception as e:
             logger.exception(e)
             return None
 
+    def delete_db(self):
+        """
+        Delete the vector db collection
+        """
+        self.chromadb_client.delete_collection(self.collection.name)
 
-def load_qa_into_vectordb(vdb, file_path: str) -> int:
+
+def load_qa_into_vectordb(collection_name, file_path: str) -> int:
     """
         Load data from a file into vector db. Each input line is a JSON record.
         {"quesiton": <>, "answer": <>, "district": <>}
@@ -64,24 +74,47 @@ def load_qa_into_vectordb(vdb, file_path: str) -> int:
         - content_type = <question/answer/question+answer>
         - original_content = <original JSON content>
     """
+    global _persist_directory, _embedding_fn
+    chromadb_client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet",
+                                               persist_directory=_persist_directory))
+    chromadb_client.delete_collection(collection_name)
+    print(chromadb_client.list_collections())
+    # collection = chromadb_client.get_or_create_collection(collection_name, embedding_function=_embedding_fn)
+    collection = chromadb_client.create_collection(collection_name, embedding_function=_embedding_fn)
+
     rid = 0
     with open(file_path, 'r') as f:
         for line in f:
             print(rid)
+            documents = []
+            metadatas = []
+            ids = []
+
             record = json.loads(line)
-            meta = {"content_type": "answer", "original_content": json.dumps(record)}
-            vdb.add_doc([record['answer']], [meta], [str(rid)])
+            documents.append(record['answer'])
+            metadatas.append({"content_type": "answer", "original_content": json.dumps(record)})
+            ids.append(str(rid))
             rid += 1
 
-            meta = {"content_type": "question", "original_content": json.dumps(record)}
-            vdb.add_doc([record['question']], [meta], [str(rid)])
+            documents.append(record['question'])
+            metadatas.append({"content_type": "question", "original_content": json.dumps(record)})
+            ids.append(str(rid))
             rid += 1
 
-            meta = {"content_type": "question+answer", "original_content": json.dumps(record)}
-            vdb.add_doc([record['answer'] + '\n\n' + record['question']], [meta], [str(rid)])
+            documents.append(record['question'] + '\n\n' + record['answer'])
+            metadatas.append({"content_type": "question+answer", "original_content": json.dumps(record)})
+            ids.append(str(rid))
             rid += 1
+
+            collection.add(documents=documents, metadatas=metadatas, ids=ids)
+
+            if rid % 3000 == 0:
+                chromadb_client.persist()
+                logger.info(f'Loaded {rid} records into VectorDB.')
+                logger.info(f'Total number of embeddings in the DB: {collection.count()}')
 
     logger.info(f'Loaded {rid} records into VectorDB.')
+    logger.info(f'Total number of embeddings in the DB: {collection.count()}')
     return rid
 
 
@@ -133,7 +166,14 @@ def load_documents_into_vector_db(vdb, in_dir: str) -> bool:
 
 
 if __name__ == '__main__':
-    vdb = VectorDB('zhongke_qa')
+    #print(vdb.collection.count())
+
     # load_qa_into_vectordb(vdb, '/Users/zhihengw/data/zhongke/json/zhongke_qa_v1.1.json')
-    result = vdb.query('我想知道如何申请贷款', n_results=10)
+    #result = vdb.query('我想知道如何申请贷款', n_results=10)
+    #result = vdb.query('新车购买后必须在多长时间内办理上牌手续？', n_results=1)
+
+    #load_qa_into_vectordb('test', '/Users/zhihengw/data/zhongke/json/test.json')
+    #load_qa_into_vectordb('zhongke_qa', '/Users/zhihengw/data/zhongke/json/zhongke_qa_v1.1.json')
+    vdb = VectorDB('zhongke_qa')
+    result = vdb.query('什么情况下面不能办理新车上牌手续？', n_results=5)
     print(result)
