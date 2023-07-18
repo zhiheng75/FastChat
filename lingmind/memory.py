@@ -1,11 +1,15 @@
 from langchain.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
+from langchain.vectorstores import Chroma
+from langchain.embeddings import HuggingFaceEmbeddings, SentenceTransformerEmbeddings
+from langchain.chains import RetrievalQA
+
 
 class Memory:
     """ Wrapper class of Intelligent Agent Memory """
     def __init__(self):
-        self.chunk_size = 400
-        self.chunk_overlap = 40
+        self.chunk_size = 300
+        self.chunk_overlap = 30
 
     def load_doc(self, file_path: str) -> bool:
         """ Load a document into memory """
@@ -32,6 +36,18 @@ class Memory:
         else:
             raise NotImplementedError
         return True
+
+    def test_search(self):
+        loader = TextLoader("../../state_of_the_union.txt")
+        documents = loader.load()
+        text_splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=30)
+        texts = text_splitter.split_documents(documents)
+
+        # embeddings = OpenAIEmbeddings()
+        embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+        docsearch = Chroma.from_documents(texts, embeddings)
+
+        qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=docsearch.as_retriever())
 
 
 if __name__ == '__main__':

@@ -24,7 +24,7 @@ from fastchat.protocol.openai_api_protocol import (
 )
 from fastchat.utils import build_logger
 from pydantic import BaseSettings, BaseModel
-from lingmind.esearch import QaDb
+from lingmind.esearch import ElasticDB
 
 
 logger = build_logger('lingmind_api_server', 'lingmind_api_server.log')
@@ -38,7 +38,7 @@ class AppSettings(BaseSettings):
     controller_address: str = "http://localhost:21001"
 
 
-qadb = QaDb()
+qadb = ElasticDB()
 app_settings = AppSettings()
 _use_auto_agent = False
 
@@ -156,6 +156,7 @@ async def demo_chat_completions(request: ChatCompletionRequest):
     global _use_auto_agent
     if not _use_auto_agent:
         # 不使用模型自动选择
+        request = inject_identity_prompt(request)
         return await create_chat_completion(request)
     else:
         # 模型自动选择

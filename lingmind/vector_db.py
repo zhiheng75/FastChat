@@ -183,5 +183,5 @@ if __name__ == '__main__':
     #load_qa_into_vectordb('test', '/Users/zhihengw/data/zhongke/json/test.json')
     #load_qa_into_vectordb('zhongke_qa', '/Users/zhihengw/data/zhongke/json/zhongke_qa_v1.1.json')
     vdb = VectorDB('zhongke_qa')
-    result = vdb.query('什么情况下面不能办理新车上牌手续？', n_results=5)
+    result = vdb.query('什么情况下面不能办理新车上牌手续？', n_results=2, where={"content_type": "question"})
     print(result)
