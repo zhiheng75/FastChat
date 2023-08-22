@@ -5,9 +5,13 @@ It supports chatting with a single model or chatting with two models side-by-sid
 
 import argparse
 import pickle
+import time
 
 import gradio as gr
 
+from fastchat.constants import (
+    SESSION_EXPIRATION_TIME,
+)
 from fastchat.serve.gradio_block_arena_anony import (
     build_side_by_side_ui_anony,
     load_demo_side_by_side_anony,
@@ -18,13 +22,13 @@ from fastchat.serve.gradio_block_arena_named import (
     load_demo_side_by_side_named,
     set_global_vars_named,
 )
-from fastchat.serve.gradio_patch import Chatbot as grChatbot
 from fastchat.serve.gradio_web_server import (
     set_global_vars,
     block_css,
     build_single_model_ui,
     get_model_list,
     load_demo_single,
+    ip_expiration_dict,
 )
 from fastchat.serve.monitor.monitor import build_leaderboard_tab
 from fastchat.utils import (
@@ -39,7 +43,10 @@ logger = build_logger("gradio_web_server_multi", "gradio_web_server_multi.log")
 def load_demo(url_params, request: gr.Request):
     global models
 
-    logger.info(f"load_demo. ip: {request.client.host}. params: {url_params}")
+    ip = request.client.host
+    logger.info(f"load_demo. ip: {ip}. params: {url_params}")
+    ip_expiration_dict[ip] = time.time() + SESSION_EXPIRATION_TIME
+
     selected = 0
     if "arena" in url_params:
         selected = 1
@@ -49,18 +56,24 @@ def load_demo(url_params, request: gr.Request):
         selected = 3
 
     if args.model_list_mode == "reload":
-        models = get_model_list(args.controller_url)
+        if args.anony_only_for_proprietary_model:
+            models = get_model_list(args.controller_url, False, False, False)
+        else:
+            models = get_model_list(
+                args.controller_url, args.add_chatgpt, args.add_claude, args.add_palm
+            )
+
     single_updates = load_demo_single(models, url_params)
 
-    models_anony = models
+    models_anony = list(models)
     if args.anony_only_for_proprietary_model:
         # Only enable these models in anony battles.
         if args.add_chatgpt:
-            models_anony = ["gpt-4", "gpt-3.5-turbo"] + models_anony
+            models_anony += ["gpt-4", "gpt-3.5-turbo"]
         if args.add_claude:
-            models_anony = ["claude-v1", "claude-instant-v1"] + models_anony
+            models_anony += ["claude-2", "claude-instant-1"]
         if args.add_palm:
-            models_anony = ["palm-2"] + models_anony
+            models_anony += ["palm-2"]
 
     side_by_side_anony_updates = load_demo_side_by_side_anony(models_anony, url_params)
     side_by_side_named_updates = load_demo_side_by_side_named(models, url_params)
@@ -72,7 +85,7 @@ def load_demo(url_params, request: gr.Request):
     )
 
 
-def build_demo(models, elo_results_file):
+def build_demo(models, elo_results_file, leaderboard_table_file):
     with gr.Blocks(
         title="Chat with Open Large Language Models",
         theme=gr.themes.Base(),
@@ -88,7 +101,7 @@ def build_demo(models, elo_results_file):
                     a_send_btn,
                     a_button_row,
                     a_parameter_row,
-                ) = build_single_model_ui(models)
+                ) = build_single_model_ui(models, add_promotion_links=True)
                 a_list = [
                     a_state,
                     a_model_selector,
@@ -149,7 +162,7 @@ def build_demo(models, elo_results_file):
 
             if elo_results_file:
                 with gr.Tab("Leaderboard", id=3):
-                    build_leaderboard_tab(elo_results_file)
+                    build_leaderboard_tab(elo_results_file, leaderboard_table_file)
 
         url_params = gr.JSON(visible=False)
 
@@ -169,8 +182,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="0.0.0.0")
     parser.add_argument("--port", type=int)
-    parser.add_argument("--controller-url", type=str, default="http://localhost:21001")
-    parser.add_argument("--concurrency-count", type=int, default=10)
+    parser.add_argument(
+        "--share",
+        action="store_true",
+        help="Whether to generate a public, shareable link.",
+    )
+    parser.add_argument(
+        "--controller-url",
+        type=str,
+        default="http://localhost:21001",
+        help="The address of the controller.",
+    )
+    parser.add_argument(
+        "--concurrency-count",
+        type=int,
+        default=10,
+        help="The concurrency count of the gradio queue.",
+    )
     parser.add_argument(
         "--model-list-mode",
         type=str,
@@ -178,19 +206,18 @@ if __name__ == "__main__":
         choices=["once", "reload"],
         help="Whether to load the model list once or reload the model list every time.",
     )
-    parser.add_argument("--share", action="store_true")
     parser.add_argument(
         "--moderate", action="store_true", help="Enable content moderation"
     )
     parser.add_argument(
         "--add-chatgpt",
         action="store_true",
-        help="Add OpenAI ChatGPT models (gpt-3.5-turbo, gpt-4)",
+        help="Add OpenAI's ChatGPT models (gpt-3.5-turbo, gpt-4)",
     )
     parser.add_argument(
         "--add-claude",
         action="store_true",
-        help="Add Anthropic's Claude models (claude-v1, claude-instant-v1)",
+        help="Add Anthropic's Claude models (claude-2, claude-instant-1)",
     )
     parser.add_argument(
         "--add-palm",
@@ -209,27 +236,28 @@ if __name__ == "__main__":
         default=None,
     )
     parser.add_argument("--elo-results-file", type=str)
+    parser.add_argument("--leaderboard-table-file", type=str)
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
+    # Set global variables
     set_global_vars(args.controller_url, args.moderate)
     set_global_vars_named(args.moderate)
     set_global_vars_anony(args.moderate)
-    models = get_model_list(args.controller_url)
+    if args.anony_only_for_proprietary_model:
+        models = get_model_list(args.controller_url, False, False, False)
+    else:
+        models = get_model_list(
+            args.controller_url, args.add_chatgpt, args.add_claude, args.add_palm
+        )
 
-    if not args.anony_only_for_proprietary_model:
-        if args.add_chatgpt:
-            models = ["gpt-3.5-turbo", "gpt-4"] + models
-        if args.add_claude:
-            models = ["claude-v1", "claude-instant-v1"] + models
-        if args.add_palm:
-            models = ["palm-2"] + models
-
+    # Set authorization credentials
     auth = None
     if args.gradio_auth_path is not None:
         auth = parse_gradio_auth_creds(args.gradio_auth_path)
 
-    demo = build_demo(models, args.elo_results_file)
+    # Launch the demo
+    demo = build_demo(models, args.elo_results_file, args.leaderboard_table_file)
     demo.queue(
         concurrency_count=args.concurrency_count, status_update_rate=10, api_open=False
     ).launch(
