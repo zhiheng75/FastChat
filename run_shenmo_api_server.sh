@@ -86,17 +86,17 @@ function start_server {
   echo "$!" > ${LOG_DIR}/${worker_name0}.pid
   sleep 1
 
-  # native Chatglm model
-  #worker_name1="llm01-6b"
-  #echo "Starting worker ${worker_name1}..."
-  #CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
-#	  --model-name "${worker_name1}" \
-#	  --model-path /home/zhihengw/model/chatglm-6b \
-#	  --port $worker_port1 \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
-#  sleep 1
+  # Baichuan2 13B 
+  worker_name1="baichuan2"
+  echo "Starting worker ${worker_name1}..."
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
+	  --model-name "${worker_name1}" \
+	  --model-path /home/zhihengw/models/Baichuan2-13B-Chat \
+	  --port $worker_port1 \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
+  sleep 1
 
   # BELLE
 #  worker_name2="llm02-13b-gov"
