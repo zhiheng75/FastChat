@@ -35,7 +35,6 @@ case "$mode" in
         worker_port1=22003
         worker_port2=22004
         openai_api_server_port=9318
-        lingmind_api_server_port=9317
         ;;
     "staging")
         echo "Running in staging mode..."
@@ -46,7 +45,6 @@ case "$mode" in
         worker_port1=21003
         worker_port2=21004
         openai_api_server_port=9308
-        lingmind_api_server_port=9307
         ;;
 esac
 
@@ -98,17 +96,17 @@ function start_server {
   echo "$!" > ${LOG_DIR}/${worker_name1}.pid
   sleep 1
 
-  # BELLE
-#  worker_name2="llm02-13b-gov"
-#  echo "Starting worker ${worker_name2}..."
-#  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m fastchat.serve.model_worker \
-#	  --model-name "${worker_name2}" \
-#	  --model-path /home/zhihengw/model/BELLE-LLaMA-EXT-13B-zhongke-lora \
-#	  --port ${worker_port2} \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
-#  sleep 1
+  # Llama2 13B Chinese
+  worker_name2="llama2-chinese"
+  echo "Starting worker ${worker_name2}..."
+  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m fastchat.serve.model_worker \
+	  --model-name "${worker_name2}" \
+	  --model-path /home/zhihengw/models/llama2-chinese-13b-chat \
+	  --port ${worker_port2} \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
+  sleep 1
 
   # API server
   echo "Starting OpenAI API server..."
