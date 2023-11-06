@@ -19,7 +19,13 @@ def register_model_info(
 
 
 def get_model_info(name: str) -> ModelInfo:
-    return model_info[name]
+    if name in model_info:
+        return model_info[name]
+    else:
+        # To fix this, please use `register_model_info` to register your model
+        return ModelInfo(
+            name, "", "Register the description at fastchat/model/model_registry.py"
+        )
 
 
 register_model_info(
@@ -299,4 +305,10 @@ register_model_info(
     "Vigogne-Chat",
     "https://huggingface.co/bofenghuang/vigogne-2-7b-chat",
     "Vigogne-Chat is a French large language model (LLM) optimized for instruction-following and multi-turn dialogues, developed by Bofeng Huang",
+)
+register_model_info(
+    ["mistral-7b-instruct"],
+    "Mistral",
+    "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.1",
+    "a large language model by Mistral AI team",
 )
