@@ -34,6 +34,7 @@ case "$mode" in
         worker_port0=22002
         worker_port1=22003
         worker_port2=22004
+        worker_port3=22005
         openai_api_server_port=9318
         ;;
     "staging")
@@ -44,6 +45,7 @@ case "$mode" in
         worker_port0=21002
         worker_port1=21003
         worker_port2=21004
+        worker_port3=21005
         openai_api_server_port=9308
         ;;
 esac
@@ -106,6 +108,19 @@ function start_server {
 	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
   echo "$!" > ${LOG_DIR}/${worker_name2}.pid
+  sleep 1
+
+  ## Llama2 70B
+  worker_name3="llama2-70b"
+  echo "Starting worker ${worker_name3}..."
+  CUDA_VISIBLE_DEVICES=2,3,4,5 nohup python3 -m fastchat.serve.model_worker \
+	  --num-gpus 4 \
+	  --model-name "${worker_name3}" \
+	  --model-path /home/zhihengw/models/llama-2-70b-chat-hf \
+	  --port ${worker_port3} \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port3} >${LOG_DIR}/${worker_name3}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name3}.pid
   sleep 1
 
   # API server
