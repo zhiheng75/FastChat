@@ -24,3 +24,4 @@ requests
 pydantic==1.10
 elasticsearch
 protobuf
+vllm
