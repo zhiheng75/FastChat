@@ -3,6 +3,15 @@
 LOG_DIR="logs"
 mkdir -p ${LOG_DIR}
 
+# If vLLM is enable, use fastchat.serve.vllm_worker instead of fastchat.serve.model_worker
+# If you want to use vLLM, you need to install the vLLM package first.
+# pip install vllm
+vllm = True
+model_worker = "fastchat.serve.model_worker"
+if [ "$vllm" ]; then
+  echo "vLLM enabled."
+  model_worker = "fastchat.serve.vllm_worker"
+
 # Read input parameters.
 # mode = [dev|staging],
 # command=[start|stop|restart]
@@ -79,7 +88,7 @@ function start_server {
   # Llama2 13B Chat
   worker_name0="llama2"
   echo "Starting worker ${worker_name0}..."
-  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name0}" \
 	  --model-path /home/zhihengw/models/llama-2-13b-chat-hf \
 	  --port ${worker_port0} \
@@ -91,7 +100,7 @@ function start_server {
   # Baichuan2 13B 
   worker_name1="baichuan2"
   echo "Starting worker ${worker_name1}..."
-  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name1}" \
 	  --model-path /home/zhihengw/models/Baichuan2-13B-Chat \
 	  --port $worker_port1 \
@@ -103,7 +112,7 @@ function start_server {
   # Llama2 13B Chinese
   worker_name2="llama2-chinese"
   echo "Starting worker ${worker_name2}..."
-  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/zhihengw/models/llama2-chinese-13b-chat \
 	  --port ${worker_port2} \
@@ -115,7 +124,7 @@ function start_server {
   ## Llama2 70B
   worker_name3="llama2-70b"
   echo "Starting worker ${worker_name3}..."
-  CUDA_VISIBLE_DEVICES=4,5 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=4,5 nohup python3 -m ${model_worker} \
 	  --num-gpus 2 \
 	  --model-name "${worker_name3}" \
 	  --model-path /home/zhihengw/models/llama-2-70b-chat-hf \
@@ -128,7 +137,7 @@ function start_server {
   ## Llama2 70B 8-bit
   worker_name4="llama2-70b-q"
   echo "Starting worker ${worker_name4}..."
-  CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=6 nohup python3 -m ${model_worker} \
 	  --load-8bit \
 	  --model-name "${worker_name4}" \
 	  --model-path /home/zhihengw/models/llama-2-70b-chat-hf \
