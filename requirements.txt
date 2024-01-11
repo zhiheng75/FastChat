@@ -3,7 +3,7 @@
 packaging
 #flash_attn
 einops
-transformers
+transformers==4.33.2
 sentencepiece
 prompt_toolkit
 rich
