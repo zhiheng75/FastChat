@@ -2,6 +2,8 @@
 Common utilities.
 """
 from asyncio import AbstractEventLoop
+from io import BytesIO
+import base64
 import json
 import logging
 import logging.handlers
@@ -56,6 +58,9 @@ def build_logger(logger_name, logger_filename):
     # Get logger
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
+
+    # Avoid httpx flooding POST logs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     # if LOGDIR is empty, then don't try output log to local file
     if LOGDIR != "":
@@ -143,20 +148,41 @@ def get_gpu_memory(max_gpus=None):
     return gpu_memory
 
 
-def violates_moderation(text):
+def oai_moderation(text):
     """
     Check whether the text violates OpenAI moderation API.
     """
     import openai
 
-    try:
-        flagged = openai.Moderation.create(input=text)["results"][0]["flagged"]
-    except openai.error.OpenAIError as e:
-        flagged = False
-    except (KeyError, IndexError) as e:
-        flagged = False
+    client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
+    threshold_dict = {
+        "sexual": 0.2,
+    }
+    MAX_RETRY = 3
+    for _ in range(MAX_RETRY):
+        try:
+            res = client.moderations.create(input=text)
+            flagged = res.results[0].flagged
+            for category, threshold in threshold_dict.items():
+                if getattr(res.results[0].category_scores, category) > threshold:
+                    flagged = True
+            break
+        except (openai.OpenAIError, KeyError, IndexError) as e:
+            # flag true to be conservative
+            flagged = True
+            print(f"MODERATION ERROR: {e}\nInput: {text}")
     return flagged
+
+
+def moderation_filter(text, model_list):
+    MODEL_KEYWORDS = ["claude", "gpt-4", "bard"]
+
+    for keyword in MODEL_KEYWORDS:
+        for model in model_list:
+            if keyword in model and oai_moderation(text):
+                return True
+    return False
 
 
 def clean_flant5_ckpt(ckpt_path):
@@ -207,7 +233,7 @@ function() {
     url_params = Object.fromEntries(params);
     console.log("url_params", url_params);
 
-    msg = "Users of this website are required to agree to the following terms:\\nThe service is a research preview. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes.\\nThe service collects user dialogue data and reserves the right to distribute it under a Creative Commons Attribution (CC-BY) or a similar license."
+    msg = "Users of this website are required to agree to the following terms:\\n\\nThe service is a research preview. It only provides limited safety measures and may generate offensive content. It must not be used for any illegal, harmful, violent, racist, or sexual purposes.\\nPlease do not upload any private information.\\nThe service collects user dialogue data, including both text and images, and reserves the right to distribute it under a Creative Commons Attribution (CC-BY) or a similar license."
     alert(msg);
 
     return url_params;
@@ -295,9 +321,9 @@ def is_sentence_complete(output: str):
 # NOTE: The ordering here is important.  Some models have two of these and we
 # have a preference for which value gets used.
 SEQUENCE_LENGTH_KEYS = [
+    "max_position_embeddings",
     "max_sequence_length",
     "seq_length",
-    "max_position_embeddings",
     "max_seq_len",
     "model_max_length",
 ]
@@ -331,3 +357,24 @@ def str_to_torch_dtype(dtype: str):
         return torch.bfloat16
     else:
         raise ValueError(f"Unrecognized dtype: {dtype}")
+
+
+def load_image(image_file):
+    from PIL import Image
+    import requests
+
+    image = None
+
+    if image_file.startswith("http://") or image_file.startswith("https://"):
+        timeout = int(os.getenv("REQUEST_TIMEOUT", "3"))
+        response = requests.get(image_file, timeout=timeout)
+        image = Image.open(BytesIO(response.content))
+    elif image_file.lower().endswith(("png", "jpg", "jpeg", "webp", "gif")):
+        image = Image.open(image_file)
+    elif image_file.startswith("data:"):
+        image_file = image_file.split(",")[1]
+        image = Image.open(BytesIO(base64.b64decode(image_file)))
+    else:
+        image = Image.open(BytesIO(base64.b64decode(image_file)))
+
+    return image

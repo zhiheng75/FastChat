@@ -4,12 +4,18 @@ A model worker that calls huggingface inference endpoint.
 Register models in a JSON file with the following format:
 {
     "falcon-180b-chat": {
-        "model_path": "tiiuae/falcon-180B-chat",
+        "model_name": "falcon-180B-chat",
         "api_base": "https://api-inference.huggingface.co/models",
-        "token": "hf_xxx",
-        "context_length": 2048,
-        "model_names": "falcon-180b-chat",
-        "conv_template": null
+        "model_path": "tiiuae/falcon-180B-chat",
+        "token": "hf_XXX",
+        "context_length": 2048
+    },
+    "zephyr-7b-beta": {
+        "model_name": "zephyr-7b-beta",
+        "model_path": "",
+        "api_base": "xxx",
+        "token": "hf_XXX",
+        "context_length": 4096
     }
 }
 
@@ -19,6 +25,7 @@ import argparse
 import asyncio
 import json
 import uuid
+import os
 from typing import List, Optional
 
 import requests
@@ -28,7 +35,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from huggingface_hub import InferenceClient
 
 from fastchat.constants import SERVER_ERROR_MSG, ErrorCode
-from fastchat.serve.model_worker import BaseModelWorker
+from fastchat.serve.base_model_worker import BaseModelWorker
 from fastchat.utils import build_logger
 
 worker_id = str(uuid.uuid4())[:8]
@@ -143,7 +150,10 @@ class HuggingfaceApiWorker(BaseModelWorker):
         logger.info(f"gen_kwargs: {gen_kwargs}")
 
         try:
-            url = f"{self.api_base}/{self.model_path}"
+            if self.model_path == "":
+                url = f"{self.api_base}"
+            else:
+                url = f"{self.api_base}/{self.model_path}"
             client = InferenceClient(url, token=self.token)
             res = client.text_generation(
                 prompt, stream=True, details=True, **gen_kwargs
@@ -297,6 +307,13 @@ def create_huggingface_api_worker():
         default=None,
         help="Overwrite the random seed for each generation.",
     )
+    parser.add_argument(
+        "--ssl",
+        action="store_true",
+        required=False,
+        default=False,
+        help="Enable SSL. Requires OS Environment variables 'SSL_KEYFILE' and 'SSL_CERTFILE'.",
+    )
     args = parser.parse_args()
 
     with open(args.model_info_file, "r", encoding="UTF-8") as f:
@@ -385,4 +402,14 @@ def create_huggingface_api_worker():
 
 if __name__ == "__main__":
     args, workers = create_huggingface_api_worker()
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    if args.ssl:
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            log_level="info",
+            ssl_keyfile=os.environ["SSL_KEYFILE"],
+            ssl_certfile=os.environ["SSL_CERTFILE"],
+        )
+    else:
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
