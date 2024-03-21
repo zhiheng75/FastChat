@@ -93,7 +93,8 @@ function start_server {
   # Llama2 13B Chat
   worker_name0="llama2"
   echo "Starting worker ${worker_name0}..."
-  CUDA_VISIBLE_DEVICES=${GPU0} nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
 	  --model-name "${worker_name0}" \
 	  --model-path /home/models/Llama2-Chinese-13b-Chat \
 	  --port ${worker_port0} \
@@ -105,7 +106,8 @@ function start_server {
   # Baichuan2 13B 
   worker_name1="baichuan2"
   echo "Starting worker ${worker_name1}..."
-  CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
 	  --model-name "${worker_name1}" \
 	  --model-path /home/models/Baichuan2-13B-Chat \
 	  --port $worker_port1 \
