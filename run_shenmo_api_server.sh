@@ -120,7 +120,8 @@ function start_server {
   # QWen 14B
   worker_name2="qwen-14b-q8"
   echo "Starting worker ${worker_name2}..."
-  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
+  #CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m fastchat.serve.model_worker \
     --num-gpus 2 \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/models/Qwen-14B-Chat-Int8 \
