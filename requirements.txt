@@ -1,7 +1,7 @@
 #pytorch
 #nvcc
 packaging
-#flash_attn
+flash_attn
 einops
 transformers==4.33.2
 sentencepiece
@@ -25,7 +25,7 @@ requests
 pydantic==1.10
 elasticsearch
 protobuf
-vllm
+vllm==0.3.0
 aiohttp
 xformers==0.0.23
 autoawq
