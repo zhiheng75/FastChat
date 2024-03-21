@@ -124,8 +124,9 @@ function start_server {
 	#  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int8 \
 	#  --model-path /home/models/Qwen1.5-7B-Chat-AWQ \
   #CUDA_VISIBLE_DEVICES=$GPU0,$GPU1,$GPU2,$GPU3 nohup python3 -m fastchat.serve.model_worker \
-  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
-    --num-gpus 2 \
+  # 14B can only be run with 1 GPU
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m ${model_worker} \
+    --num-gpus 1 \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int4 \
 	  --port $worker_port2 \
