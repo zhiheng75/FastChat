@@ -81,7 +81,7 @@ function stop_server {
 
 # define a function to start all processes
 function start_server {
-  local_ip_address="10.60.100.180"
+  local_ip_address="10.0.0.63"
 
   controller_address="http://localhost:${controller_port}"
   # Start the controller
