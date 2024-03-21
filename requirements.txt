@@ -28,3 +28,5 @@ protobuf
 vllm
 aiohttp
 xformers==0.0.23
+autoawq
+auto_gptq
