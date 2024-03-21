@@ -95,7 +95,7 @@ function start_server {
   echo "Starting worker ${worker_name0}..."
   CUDA_VISIBLE_DEVICES=${GPU0} nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name0}" \
-	  --model-path /home/models/Llama-2-13B-chat \
+	  --model-path /home/models/Llama2-Chinese-13b-Chat \
 	  --port ${worker_port0} \
 	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
