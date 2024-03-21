@@ -106,7 +106,7 @@ function start_server {
   # Baichuan2 13B 
   worker_name1="baichuan2"
   echo "Starting worker ${worker_name1}..."
-  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
     --num-gpus 2 \
 	  --model-name "${worker_name1}" \
 	  --model-path /home/models/Baichuan2-13B-Chat \
