@@ -38,10 +38,10 @@ fi
 case "$mode" in
     "dev")
         echo "Running in dev mode..."
-        GPU0=0
-        GPU1=1
-        GPU2=2
-        GPU3=3
+        GPU0=4
+        GPU1=5
+        GPU2=6
+        GPU3=7
         controller_port=22001
         worker_port0=22002
         worker_port1=22003
