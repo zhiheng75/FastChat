@@ -3,7 +3,7 @@
 packaging
 #flash_attn
 einops
-transformers
+transformers==4.33.2
 sentencepiece
 prompt_toolkit
 rich
@@ -19,9 +19,10 @@ openai
 black[jupyter]
 numpy
 tqdm
-torch
+torch==2.0.1
 requests
 pydantic==1.10
 elasticsearch
 protobuf
 vllm
+aiohttp
