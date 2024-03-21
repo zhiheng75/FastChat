@@ -38,8 +38,10 @@ fi
 case "$mode" in
     "dev")
         echo "Running in dev mode..."
-        GPU0=6
-        GPU1=7
+        GPU0=4
+        GPU1=5
+        GPU2=6
+        GPU3=7
         controller_port=22001
         worker_port0=22002
         worker_port1=22003
@@ -52,6 +54,8 @@ case "$mode" in
         echo "Running in staging mode..."
         GPU0=0
         GPU1=1
+        GPU2=2
+        GPU3=3
         controller_port=21001
         worker_port0=21002
         worker_port1=21003
@@ -91,7 +95,7 @@ function start_server {
   echo "Starting worker ${worker_name0}..."
   CUDA_VISIBLE_DEVICES=${GPU0} nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name0}" \
-	  --model-path /home/zhihengw/models/llama-2-13b-chat-hf \
+	  --model-path /home/models/Llama-2-13B-chat \
 	  --port ${worker_port0} \
 	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
@@ -103,7 +107,7 @@ function start_server {
   echo "Starting worker ${worker_name1}..."
   CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m ${model_worker} \
 	  --model-name "${worker_name1}" \
-	  --model-path /home/zhihengw/models/Baichuan2-13B-Chat \
+	  --model-path /home/models/Baichuan2-13B-Chat \
 	  --port $worker_port1 \
 	  --trust-remote-code \
 	  --controller-address ${controller_address} \
