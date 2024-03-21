@@ -91,31 +91,43 @@ function start_server {
   sleep 5
 
   # Llama2 13B Chat
-  worker_name0="llama2"
-  echo "Starting worker ${worker_name0}..."
-  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
-    --num-gpus 2 \
-	  --model-name "${worker_name0}" \
-	  --model-path /home/models/Llama2-Chinese-13b-Chat \
-	  --port ${worker_port0} \
-	  --controller-address ${controller_address} \
-	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
-  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
-  sleep 5
+#  worker_name0="llama2"
+#  echo "Starting worker ${worker_name0}..."
+#  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
+#    --num-gpus 2 \
+#	  --model-name "${worker_name0}" \
+#	  --model-path /home/models/Llama2-Chinese-13b-Chat \
+#	  --port ${worker_port0} \
+#	  --controller-address ${controller_address} \
+#	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
+#  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
+#  sleep 5
 
-  # Baichuan2 13B 
-  worker_name1="baichuan2"
-  echo "Starting worker ${worker_name1}..."
-  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
+  # Baichuan2 13B
+#  worker_name1="baichuan2"
+#  echo "Starting worker ${worker_name1}..."
+#  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
+#    --num-gpus 2 \
+#	  --model-name "${worker_name1}" \
+#	  --model-path /home/models/Baichuan2-13B-Chat \
+#	  --port $worker_port1 \
+#	  --trust-remote-code \
+#	  --controller-address ${controller_address} \
+#	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+#  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
+#  sleep 5
+
+  # QWen 14B
+  worker_name2="qwen-14b-q8"
+  echo "Starting worker ${worker_name2}..."
+  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
     --num-gpus 2 \
-	  --model-name "${worker_name1}" \
-	  --model-path /home/models/Baichuan2-13B-Chat \
-	  --port $worker_port1 \
-	  --trust-remote-code \
+	  --model-name "${worker_name2}" \
+	  --model-path /home/models/Qwen-14B-Chat-Int8 \
+	  --port $worker_port2 \
 	  --controller-address ${controller_address} \
-	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
-  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
-  sleep 5
+	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
 
   # Llama2 13B Chinese
   #worker_name2="llama2-chinese"
