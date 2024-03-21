@@ -38,10 +38,10 @@ fi
 case "$mode" in
     "dev")
         echo "Running in dev mode..."
-        GPU0=4
-        GPU1=5
-        GPU2=6
-        GPU3=7
+        GPU0=0
+        GPU1=1
+        GPU2=2
+        GPU3=3
         controller_port=22001
         worker_port0=22002
         worker_port1=22003
@@ -122,7 +122,7 @@ function start_server {
   echo "Starting worker ${worker_name2}..."
   #CUDA_VISIBLE_DEVICES=$GPU1,$GPU2 nohup python3 -m ${model_worker} \
 	#  --model-path /home/models/Qwen-14B-Chat-Int8 \
-  CUDA_VISIBLE_DEVICES=$GPU1,$GPU2,$GPU3,$GPU4 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1,$GPU2,$GPU3 nohup python3 -m fastchat.serve.model_worker \
     --num-gpus 4 \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int8 \
