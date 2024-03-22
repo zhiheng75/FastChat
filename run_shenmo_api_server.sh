@@ -106,19 +106,19 @@ function start_server {
   # Baichuan2 13B
 #  worker_name1="baichuan2"
 #  echo "Starting worker ${worker_name1}..."
-#  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
-#    --num-gpus 2 \
-#	  --model-name "${worker_name1}" \
-#	  --model-path /home/models/Baichuan2-13B-Chat \
-#	  --port $worker_port1 \
-#	  --trust-remote-code \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
-#  sleep 5
+  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
+	  --model-name "${worker_name1}" \
+	  --model-path /home/models/Baichuan2-13B-Chat \
+	  --port $worker_port1 \
+	  --trust-remote-code \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
+  sleep 5
 
   # QWen 14B
-  worker_name2="qwen-14b-q8"
+  worker_name2="qwen-14b"
   echo "Starting worker ${worker_name2}..."
 	#  --model-path /home/models/Qwen-14B-Chat-Int8 \
 	#  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int8 \
