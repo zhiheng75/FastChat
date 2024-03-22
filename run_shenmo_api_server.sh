@@ -104,8 +104,8 @@ function start_server {
 #  sleep 5
 
   # Baichuan2 13B
-#  worker_name1="baichuan2"
-#  echo "Starting worker ${worker_name1}..."
+  worker_name1="baichuan2"
+  echo "Starting worker ${worker_name1}..."
   CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
     --num-gpus 2 \
 	  --model-name "${worker_name1}" \
