@@ -38,10 +38,9 @@ fi
 case "$mode" in
     "dev")
         echo "Running in dev mode..."
-        GPU0=4
-        GPU1=5
-        GPU2=6
-        GPU3=7
+        GPU0=5
+        GPU1=6
+        GPU2=7
         controller_port=22001
         worker_port0=22002
         worker_port1=22003
@@ -56,6 +55,7 @@ case "$mode" in
         GPU1=1
         GPU2=2
         GPU3=3
+        GPU4=4
         controller_port=21001
         worker_port0=21002
         worker_port1=21003
@@ -91,17 +91,17 @@ function start_server {
   sleep 5
 
   # Llama2 13B Chat
-#  worker_name0="llama2"
-#  echo "Starting worker ${worker_name0}..."
-#  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
-#    --num-gpus 2 \
-#	  --model-name "${worker_name0}" \
-#	  --model-path /home/models/Llama2-Chinese-13b-Chat \
-#	  --port ${worker_port0} \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
-#  sleep 5
+  worker_name0="llama2"
+  echo "Starting worker ${worker_name0}..."
+  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
+	  --model-name "${worker_name0}" \
+	  --model-path /home/models/Llama2-Chinese-13b-Chat \
+	  --port ${worker_port0} \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
+  sleep 5
 
   # Baichuan2 13B
   worker_name1="baichuan2"
@@ -125,7 +125,7 @@ function start_server {
 	#  --model-path /home/models/Qwen1.5-7B-Chat-AWQ \
   #CUDA_VISIBLE_DEVICES=$GPU0,$GPU1,$GPU2,$GPU3 nohup python3 -m fastchat.serve.model_worker \
   # 14B can only be run with 1 GPU
-  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=$GPU4 nohup python3 -m ${model_worker} \
     --num-gpus 1 \
 	  --model-name "${worker_name2}" \
 	  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int4 \
@@ -135,44 +135,6 @@ function start_server {
 	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
   echo "$!" > ${LOG_DIR}/${worker_name2}.pid
 
-  # Llama2 13B Chinese
-  #worker_name2="llama2-chinese"
-  #echo "Starting worker ${worker_name2}..."
-  #CUDA_VISIBLE_DEVICES=$GPU1 nohup python3 -m ${model_worker} \
-	#  --model-name "${worker_name2}" \
-	#  --model-path /home/zhihengw/models/llama2-chinese-13b-chat \
-	#  --port ${worker_port2} \
-	#  --controller-address ${controller_address} \
-	#  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
-  #echo "$!" > ${LOG_DIR}/${worker_name2}.pid
-  #sleep 5
-
-  ## Llama2 70B
-  #worker_name3="llama2-70b"
-  #echo "Starting worker ${worker_name3}..."
-  #CUDA_VISIBLE_DEVICES=4,5 nohup python3 -m ${model_worker} \
-	#  --num-gpus 2 \
-	#  --model-name "${worker_name3}" \
-	#  --model-path /home/zhihengw/models/llama-2-70b-chat-hf \
-	#  --port ${worker_port3} \
-	#  --controller-address ${controller_address} \
-	#  --worker-address http://localhost:${worker_port3} >${LOG_DIR}/${worker_name3}.nohup 2>&1 &
-  #echo "$!" > ${LOG_DIR}/${worker_name3}.pid
-  #sleep 5
-
-  ## Llama2 70B 8-bit
-  ## FastChat 8-bit Quantization doesn't support vLLM yet.
-  #worker_name4="llama2-70b-q"
-  #echo "Starting worker ${worker_name4}..."
-  #CUDA_VISIBLE_DEVICES=6 nohup python3 -m fastchat.serve.model_worker \
-	#  --load-8bit \
-	#  --model-name "${worker_name4}" \
-	#  --model-path /home/zhihengw/models/llama-2-70b-chat-hf \
-	#  --port ${worker_port4} \
-	#  --controller-address ${controller_address} \
-	#  --worker-address http://localhost:${worker_port4} >${LOG_DIR}/${worker_name4}.nohup 2>&1 &
-  #echo "$!" > ${LOG_DIR}/${worker_name4}.pid
-  #sleep 5
 
   # API server
   echo "Starting OpenAI API server..."
