@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 
+export LD_LIBRARY_PATH=/home/dev/staging/FastChat/venv/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$LD_LIBRARY_PATH
 LOG_DIR="logs"
 mkdir -p ${LOG_DIR}
 
