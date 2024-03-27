@@ -91,58 +91,58 @@ function start_server {
   echo "$!" > ${LOG_DIR}/controller.pid
   sleep 5
 
-#  # Llama2 13B Chat
-#  worker_name0="llama2"
-#  echo "Starting worker ${worker_name0}..."
-#  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
-#    --num-gpus 2 \
-#	  --model-name "${worker_name0}" \
-#	  --model-path /home/models/Llama2-Chinese-13b-Chat \
-#	  --port ${worker_port0} \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
-#  sleep 5
+  # Llama2 13B Chat
+  worker_name0="llama2"
+  echo "Starting worker ${worker_name0}..."
+  CUDA_VISIBLE_DEVICES=$GPU0,$GPU1 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
+	  --model-name "${worker_name0}" \
+	  --model-path /home/models/Llama2-Chinese-13b-Chat \
+	  --port ${worker_port0} \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port0} >${LOG_DIR}/${worker_name0}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name0}.pid
+  sleep 5
 
   # Baichuan2 13B
-#  worker_name1="baichuan2"
-#  echo "Starting worker ${worker_name1}..."
-#  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
-#    --num-gpus 2 \
-#	  --model-name "${worker_name1}" \
-#	  --model-path /home/models/Baichuan2-13B-Chat \
-#	  --port $worker_port1 \
-#	  --trust-remote-code \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
-#  sleep 5
+  worker_name1="baichuan2"
+  echo "Starting worker ${worker_name1}..."
+  CUDA_VISIBLE_DEVICES=$GPU2,$GPU3 nohup python3 -m ${model_worker} \
+    --num-gpus 2 \
+	  --model-name "${worker_name1}" \
+	  --model-path /home/models/Baichuan2-13B-Chat \
+	  --port $worker_port1 \
+	  --trust-remote-code \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port1} >${LOG_DIR}/${worker_name1}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name1}.pid
+  sleep 5
 
-#  # QWen 14B
-#  worker_name2="qwen-14b"
-#  echo "Starting worker ${worker_name2}..."
-#	#  --model-path /home/models/Qwen-14B-Chat-Int8 \
-#	#  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int8 \
-#	#  --model-path /home/models/Qwen1.5-7B-Chat-AWQ \
-#  #CUDA_VISIBLE_DEVICES=$GPU0,$GPU1,$GPU2,$GPU3 nohup python3 -m fastchat.serve.model_worker \
-#  # 14B can only be run with 1 GPU
-#  CUDA_VISIBLE_DEVICES=$GPU4 nohup python3 -m ${model_worker} \
-#    --num-gpus 1 \
-#	  --model-name "${worker_name2}" \
-#	  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int4 \
-#	  --port $worker_port2 \
-#	  --max-model-len 8192 \
-#	  --controller-address ${controller_address} \
-#	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
-#  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
+  # QWen 14B
+  worker_name2="qwen-14b"
+  echo "Starting worker ${worker_name2}..."
+	#  --model-path /home/models/Qwen-14B-Chat-Int8 \
+	#  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int8 \
+	#  --model-path /home/models/Qwen1.5-7B-Chat-AWQ \
+  #CUDA_VISIBLE_DEVICES=$GPU0,$GPU1,$GPU2,$GPU3 nohup python3 -m fastchat.serve.model_worker \
+  # 14B can only be run with 1 GPU
+  CUDA_VISIBLE_DEVICES=$GPU4 nohup python3 -m ${model_worker} \
+    --num-gpus 1 \
+	  --model-name "${worker_name2}" \
+	  --model-path /home/models/Qwen1.5-14B-Chat-GPTQ-Int4 \
+	  --port $worker_port2 \
+	  --max-model-len 8192 \
+	  --controller-address ${controller_address} \
+	  --worker-address http://localhost:${worker_port2} >${LOG_DIR}/${worker_name2}.nohup 2>&1 &
+  echo "$!" > ${LOG_DIR}/${worker_name2}.pid
 
   # BGE v1.5
-  worker_name3="bge-v1.5"
-#	  --model-path /home/models/bge-large-zh-v1.5 \
+  worker_name3="bge-zh-v1.5"
+#	  --model-path /home/models/bge-m3 \
   echo "Starting worker ${worker_name3}..."
-  CUDA_VISIBLE_DEVICES=7 nohup python3 -m fastchat.serve.model_worker \
+  CUDA_VISIBLE_DEVICES=$GPU0 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name3}" \
-	  --model-path /home/models/bge-m3 \
+	  --model-path /home/models/bge-large-zh-v1.5 \
 	  --port $worker_port3 \
 	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port3} >${LOG_DIR}/${worker_name3}.nohup 2>&1 &
