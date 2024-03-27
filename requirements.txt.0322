@@ -112,7 +112,8 @@ tiktoken==0.6.0
 tokenize-rt==5.2.0
 tokenizers==0.15.2
 tomli==2.0.1
-torch==2.1.2
+torch==2.1.2+cu118
+#torch==2.1.2
 tqdm==4.66.2
 traitlets==5.14.2
 transformers==4.39.0
