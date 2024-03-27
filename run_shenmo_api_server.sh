@@ -138,10 +138,11 @@ function start_server {
 
   # BGE v1.5
   worker_name3="bge-v1.5"
+#	  --model-path /home/models/bge-large-zh-v1.5 \
   echo "Starting worker ${worker_name3}..."
-  CUDA_VISIBLE_DEVICES=$GPU4 nohup python3 -m ${model_worker} \
+  CUDA_VISIBLE_DEVICES=7 nohup python3 -m fastchat.serve.model_worker \
 	  --model-name "${worker_name3}" \
-	  --model-path /home/models/bge-large-zh-v1.5 \
+	  --model-path /home/models/bge-m3 \
 	  --port $worker_port3 \
 	  --controller-address ${controller_address} \
 	  --worker-address http://localhost:${worker_port3} >${LOG_DIR}/${worker_name3}.nohup 2>&1 &
